@@ -17,13 +17,13 @@
         #root { min-height: 100vh; width: 100%; }
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(99, 102, 241, 0.1); border-left-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.5); }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script>
-        // Use standard JS (no Babel needed) to ensure instant loading
         const e = React.createElement;
         const { useState, useEffect } = React;
 
@@ -32,16 +32,22 @@
             const [activeTab, setActiveTab] = useState('loadstrings');
             const [scripts, setScripts] = useState([]);
             const [copiedId, setCopiedId] = useState(null);
+            const [showModal, setShowModal] = useState(false);
+            const [modalContent, setModalContent] = useState("");
 
-            // Initializing Lucide icons after mount
             useEffect(() => {
                 if (window.lucide) {
                     window.lucide.createIcons();
                 }
-            }, [user, activeTab, scripts]);
+            }, [user, activeTab, scripts, showModal]);
 
             const handleLogin = () => {
                 setUser({ name: "Luanet Dev", provider: "Guest" });
+            };
+
+            const showAlert = (msg) => {
+                setModalContent(msg);
+                setShowModal(true);
             };
 
             if (!user) {
@@ -89,8 +95,16 @@
                         )
                     ),
                     e('main', { className: "flex-1 overflow-y-auto p-12" },
-                        activeTab === 'loadstrings' ? e(LoadstringsTab, { scripts, setScripts, copiedId, setCopiedId }) : 
+                        activeTab === 'loadstrings' ? e(LoadstringsTab, { scripts, setScripts, copiedId, setCopiedId, showAlert }) : 
                         activeTab === 'obfuscator' ? e(ObfuscatorTab) : e(SimulatorTab, { scripts })
+                    ),
+                    showModal && e('div', { className: "fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm" },
+                        e('div', { className: "glass w-full max-w-md p-8 rounded-[2.5rem] text-center" },
+                            e('i', { 'data-lucide': 'info', className: "mx-auto mb-4 text-indigo-500", size: 40 }),
+                            e('h3', { className: "text-xl font-black text-white mb-2" }, "SYSTEM MESSAGE"),
+                            e('p', { className: "text-slate-400 mb-6 font-medium" }, modalContent),
+                            e('button', { onClick: () => setShowModal(false), className: "bg-indigo-600 text-white px-8 py-3 rounded-xl font-black text-xs tracking-widest" }, "DISMISS")
+                        )
                     )
                 )
             );
@@ -105,14 +119,16 @@
             }, e('i', { 'data-lucide': icon, className: `w-5 h-5 mr-4 ${active ? 'text-white' : 'text-indigo-500'}` }), label.toUpperCase());
         }
 
-        function LoadstringsTab({ scripts, setScripts, copiedId, setCopiedId }) {
+        function LoadstringsTab({ scripts, setScripts, copiedId, setCopiedId, showAlert }) {
             const [name, setName] = useState('');
             const [code, setCode] = useState('');
 
             const handleCreate = () => {
                 if (!name || !code) return;
-                setScripts([{ id: Math.random().toString(36).substr(2, 9), name, code }, ...scripts]);
+                const newId = Math.random().toString(36).substr(2, 9);
+                setScripts([{ id: newId, name, code }, ...scripts]);
                 setName(''); setCode('');
+                showAlert("Endpoint provisioned in local buffer. Note: For permanent hosting, please enable 'Cloud Sync' (Firebase upgrade).");
             };
 
             const copy = (id) => {
@@ -142,7 +158,58 @@
         }
 
         function ObfuscatorTab() { return e('div', { className: "text-slate-500 font-bold" }, "Obfuscator Engine v1.0 Ready. Insert code to begin."); }
-        function SimulatorTab() { return e('div', { className: "text-slate-500 font-bold" }, "Simulator Ready. Select a deployment to test."); }
+        
+        function SimulatorTab({ scripts }) {
+            const [selected, setSelected] = useState('');
+            const [log, setLog] = useState(null);
+
+            const simulateRequest = (isBrowser) => {
+                const script = scripts.find(s => s.id === selected);
+                if (!script) return;
+
+                if (isBrowser) {
+                    setLog({
+                        status: 403,
+                        message: "API Cannot be shown in browser",
+                        sub: "Access Denied: Browser User-Agent detected.",
+                        ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Browser/v1"
+                    });
+                } else {
+                    setLog({
+                        status: 200,
+                        message: script.code,
+                        sub: "Success: Request originated from Executor.",
+                        ua: "Roblox/WinInet (RobloxExecutor)"
+                    });
+                }
+            };
+
+            return e('div', { className: "max-w-4xl space-y-8" },
+                e('div', { className: "bg-slate-900/50 p-10 rounded-[2.5rem] border border-slate-800" },
+                    e('h2', { className: "text-xl font-black text-white mb-6" }, "MIDDLEWARE TESTER"),
+                    e('select', { 
+                        value: selected, 
+                        onChange: e => setSelected(e.target.value),
+                        className: "w-full bg-slate-950 border border-slate-800 p-4 rounded-xl mb-6 text-white outline-none"
+                    }, 
+                        e('option', { value: "" }, "Select a script to test..."),
+                        scripts.map(s => e('option', { key: s.id, value: s.id }, s.name))
+                    ),
+                    e('div', { className: "grid grid-cols-2 gap-4" },
+                        e('button', { onClick: () => simulateRequest(true), className: "bg-slate-800 p-6 rounded-2xl border border-slate-700 font-bold text-xs" }, "Simulate Browser"),
+                        e('button', { onClick: () => simulateRequest(false), className: "bg-indigo-600/20 p-6 rounded-2xl border border-indigo-500/30 font-bold text-xs text-indigo-400" }, "Simulate Executor")
+                    )
+                ),
+                log && e('div', { className: "bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 font-mono text-xs" },
+                    e('p', { className: "text-indigo-500 mb-2" }, "[SERVER TRACE]"),
+                    e('p', { className: "text-slate-500 mb-4" }, "User-Agent: " + log.ua),
+                    e('div', { className: `p-6 rounded-xl border ${log.status === 403 ? 'border-red-500/20 bg-red-500/5 text-red-400' : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'}` },
+                        e('p', { className: "font-black text-sm mb-1" }, log.message),
+                        e('p', { className: "opacity-50" }, log.sub)
+                    )
+                )
+            );
+        }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(e(App));
