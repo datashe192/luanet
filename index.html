@@ -1,320 +1,256 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Code, Shield, Link as LinkIcon, LogOut, Copy, Check, 
-  Terminal, Globe, Lock, Play, Plus, Trash2, Info
-} from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  OAuthProvider, 
-  onAuthStateChanged, 
-  signOut 
-} from 'firebase/auth';
-
-// --- CONFIGURATION ---
-const BASE_URL = "https://datashe192.github.io/luanet";
-
-// --- FIREBASE SETUP ---
-let app, auth;
-try {
-  const firebaseConfig = typeof __firebase_config !== 'undefined' 
-    ? JSON.parse(__firebase_config) 
-    : { 
-        apiKey: "", // Add your Firebase API Key here
-        authDomain: "luanet-auth.firebaseapp.com",
-        projectId: "luanet-auth"
-      };
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-} catch (e) {
-  console.warn("Firebase initialization skipped or failed.");
-}
-
-const generateId = () => Math.random().toString(36).substring(2, 10);
-
-const MOCK_EXECUTOR_USER_AGENTS = [
-  "Roblox/WinInet",
-  "Synapse X",
-  "Krnl",
-  "Fluxus",
-  "ScriptWare"
-];
-
-// --- MAIN APP COMPONENT ---
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luanet API | Script Hosting</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel to translate JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest"></script>
     
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser({
-          name: currentUser.displayName || "Developer",
-          provider: currentUser.providerData[0]?.providerId || "OAuth",
-          id: currentUser.uid,
-          email: currentUser.email
-        });
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    <style>
+        body { background-color: #020617; color: #cbd5e1; font-family: sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Terminal className="text-indigo-500 animate-pulse w-12 h-12" />
-      </div>
-    );
-  }
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { 
+            Code, Shield, Link: LinkIcon, LogOut, Copy, Check, 
+            Terminal, Globe, Lock, Play, Plus, Trash2, Info 
+        } = lucideReact;
 
-  if (!user) {
-    return <AuthScreen />;
-  }
+        const BASE_URL = "https://datashe192.github.io/luanet";
+        const generateId = () => Math.random().toString(36).substring(2, 10);
 
-  return <Dashboard user={user} onLogout={() => signOut(auth)} />;
-}
+        // --- MOCK AUTH FOR GITHUB PAGES (Since Firebase requires specific domains) ---
+        function App() {
+            const [user, setUser] = useState(null);
+            const [activeTab, setActiveTab] = useState('loadstrings');
+            const [scripts, setScripts] = useState([]);
 
-// --- AUTH SCREEN ---
-function AuthScreen() {
-  const [error, setError] = useState("");
+            const handleLogin = (provider) => {
+                setUser({
+                    name: "Developer",
+                    provider: provider,
+                    email: "user@example.com"
+                });
+            };
 
-  const handleLogin = async (providerName) => {
-    if (!auth) {
-      setError("Please configure your Firebase API Key in the code to enable real login.");
-      return;
-    }
+            if (!user) {
+                return (
+                    <div className="min-h-screen flex flex-col justify-center py-12 px-6 bg-slate-950 text-slate-300">
+                        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+                            <Terminal size={56} className="text-indigo-500 mx-auto mb-4" />
+                            <h2 className="text-3xl font-extrabold text-white">Luanet API</h2>
+                            <p className="mt-2 text-sm text-slate-400">Secure Script Hosting & Distribution</p>
+                        </div>
+                        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+                            <div className="bg-slate-900 py-8 px-10 shadow-xl border border-slate-800 rounded-2xl space-y-3">
+                                <button onClick={() => handleLogin('Google')} className="w-full flex justify-center items-center py-2.5 px-4 border border-slate-700 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 transition-all">
+                                    <Globe className="w-4 h-4 mr-3 text-red-400" /> Continue with Google
+                                </button>
+                                <button onClick={() => handleLogin('Microsoft')} className="w-full flex justify-center items-center py-2.5 px-4 border border-slate-700 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 transition-all">
+                                    <span className="mr-3">🪟</span> Continue with Microsoft
+                                </button>
+                                <button onClick={() => handleLogin('Apple')} className="w-full flex justify-center items-center py-2.5 px-4 border border-slate-700 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 transition-all">
+                                    <span className="mr-3">🍎</span> Continue with Apple
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
-    try {
-      setError("");
-      let provider;
-      if (providerName === 'Google') provider = new GoogleAuthProvider();
-      else if (providerName === 'Microsoft') provider = new OAuthProvider('microsoft.com');
-      else if (providerName === 'Apple') provider = new OAuthProvider('apple.com');
+            return (
+                <div className="min-h-screen flex">
+                    {/* Sidebar */}
+                    <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+                        <div className="h-16 flex items-center px-6 border-b border-slate-800">
+                            <Terminal className="text-indigo-500 mr-2" size={24} />
+                            <span className="text-white font-bold text-lg tracking-tight">LUANET</span>
+                        </div>
+                        <div className="p-4 flex-1 space-y-1">
+                            <SidebarItem icon={LinkIcon} label="Loadstrings" active={activeTab === 'loadstrings'} onClick={() => setActiveTab('loadstrings')} />
+                            <SidebarItem icon={Shield} label="Obfuscator" active={activeTab === 'obfuscator'} onClick={() => setActiveTab('obfuscator')} />
+                            <SidebarItem icon={Play} label="API Tester" active={activeTab === 'simulator'} onClick={() => setActiveTab('simulator')} />
+                        </div>
+                        <div className="p-4 border-t border-slate-800">
+                            <div className="text-sm px-2 mb-4">
+                                <p className="text-white font-medium truncate">{user.name}</p>
+                                <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                            </div>
+                            <button onClick={() => setUser(null)} className="w-full flex items-center px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-all">
+                                <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                            </button>
+                        </div>
+                    </div>
 
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+                    {/* Main Content */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        <header className="h-16 bg-slate-900/50 border-b border-slate-800 flex items-center px-8">
+                            <h1 className="text-xl font-semibold text-white capitalize">{activeTab}</h1>
+                        </header>
+                        <main className="flex-1 overflow-y-auto p-8 bg-slate-950">
+                            {activeTab === 'loadstrings' && <LoadstringsTab scripts={scripts} setScripts={setScripts} />}
+                            {activeTab === 'obfuscator' && <ObfuscatorTab />}
+                            {activeTab === 'simulator' && <SimulatorTab scripts={scripts} />}
+                        </main>
+                    </div>
+                </div>
+            );
+        }
 
-  return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 px-6 lg:px-8 font-sans text-slate-300">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-indigo-500 mb-4">
-          <Terminal size={56} strokeWidth={1.5} />
-        </div>
-        <h2 className="text-center text-3xl font-extrabold text-white">Luanet API</h2>
-        <p className="mt-2 text-center text-sm text-slate-400">Secure Script Hosting & Distribution</p>
-        {error && (
-          <div className="mt-4 bg-red-500/10 border border-red-500/50 text-red-400 text-xs p-3 rounded-lg text-center">
-            {error}
-          </div>
-        )}
-      </div>
+        function SidebarItem({ icon: Icon, label, active, onClick }) {
+            return (
+                <button
+                    onClick={onClick}
+                    className={`w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                        active ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    }`}
+                >
+                    <Icon className="w-5 h-5 mr-3" /> {label}
+                </button>
+            );
+        }
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-900 py-8 px-10 shadow-xl border border-slate-800 rounded-2xl">
-          <div className="space-y-3">
-            <button onClick={() => handleLogin('Google')} className="w-full flex justify-center items-center py-2.5 px-4 border border-slate-700 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 transition-all">
-              <Globe className="w-4 h-4 mr-3 text-red-400" /> Continue with Google
-            </button>
-            <button onClick={() => handleLogin('Microsoft')} className="w-full flex justify-center items-center py-2.5 px-4 border border-slate-700 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 transition-all">
-              <span className="mr-3">🪟</span> Continue with Microsoft
-            </button>
-            <button onClick={() => handleLogin('Apple')} className="w-full flex justify-center items-center py-2.5 px-4 border border-slate-700 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 transition-all">
-              <span className="mr-3">🍎</span> Continue with Apple
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+        function LoadstringsTab({ scripts, setScripts }) {
+            const [name, setName] = useState('');
+            const [code, setCode] = useState('');
+            const [copiedId, setCopiedId] = useState(null);
 
-// --- DASHBOARD ---
-function Dashboard({ user, onLogout }) {
-  const [activeTab, setActiveTab] = useState('loadstrings');
-  const [scripts, setScripts] = useState([]);
+            const handleCreate = () => {
+                if (!name.trim() || !code.trim()) return;
+                setScripts([{ id: generateId(), name, code }, ...scripts]);
+                setName(''); setCode('');
+            };
 
-  const tabs = [
-    { id: 'loadstrings', name: 'Loadstrings', icon: LinkIcon },
-    { id: 'obfuscator', name: 'Obfuscator', icon: Shield },
-    { id: 'simulator', name: 'API Tester', icon: Play },
-  ];
+            const copyLink = (id) => {
+                const loadstring = `loadstring(game:HttpGet("${BASE_URL}/raw/${id}"))()`;
+                document.execCommand('copy'); // Fallback for some browsers
+                navigator.clipboard.writeText(loadstring);
+                setCopiedId(id);
+                setTimeout(() => setCopiedId(null), 2000);
+            };
 
-  return (
-    <div className="min-h-screen bg-slate-950 flex text-slate-300 font-sans">
-      <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-slate-800">
-          <Terminal className="text-indigo-500 mr-2" size={24} />
-          <span className="text-white font-bold text-lg tracking-tight">LUANET</span>
-        </div>
-        <div className="p-4 flex-1 space-y-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab.id ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <tab.icon className="w-5 h-5 mr-3" /> {tab.name}
-            </button>
-          ))}
-        </div>
-        <div className="p-4 border-t border-slate-800">
-          <div className="text-sm px-2 mb-4">
-            <p className="text-white font-medium truncate">{user.name}</p>
-            <p className="text-xs text-slate-500 truncate">{user.email}</p>
-          </div>
-          <button onClick={onLogout} className="w-full flex items-center px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-all">
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out
-          </button>
-        </div>
-      </div>
+            return (
+                <div className="max-w-4xl space-y-8">
+                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg">
+                        <h2 className="text-white font-medium mb-4 flex items-center"><Plus className="mr-2 text-indigo-400" size={20}/> New Loadstring</h2>
+                        <div className="space-y-4">
+                            <input value={name} onChange={e => setName(e.target.value)} placeholder="Script Name" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white outline-none focus:border-indigo-500" />
+                            <textarea value={code} onChange={e => setCode(e.target.value)} placeholder="Paste your Lua script here..." rows={6} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-emerald-400 font-mono text-sm outline-none focus:border-indigo-500" />
+                            <button onClick={handleCreate} disabled={!name || !code} className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-medium transition-all">Generate Link</button>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <h3 className="text-white font-medium">Active Endpoints</h3>
+                        {scripts.map(s => (
+                            <div key={s.id} className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center justify-between group">
+                                <div className="truncate pr-4">
+                                    <p className="text-white font-medium">{s.name}</p>
+                                    <code className="text-xs text-indigo-400">{BASE_URL}/raw/{s.id}</code>
+                                </div>
+                                <button onClick={() => copyLink(s.id)} className="p-2 bg-slate-950 rounded border border-slate-800 hover:text-white transition-all">
+                                    {copiedId === s.id ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-slate-900/50 border-b border-slate-800 flex items-center px-8">
-          <h1 className="text-xl font-semibold text-white capitalize">{activeTab}</h1>
-        </header>
-        <main className="flex-1 overflow-y-auto p-8">
-          {activeTab === 'loadstrings' && <LoadstringsTab scripts={scripts} setScripts={setScripts} />}
-          {activeTab === 'obfuscator' && <ObfuscatorTab />}
-          {activeTab === 'simulator' && <SimulatorTab scripts={scripts} />}
-        </main>
-      </div>
-    </div>
-  );
-}
+        function ObfuscatorTab() {
+            const [code, setCode] = useState('');
+            const [output, setOutput] = useState('');
+            const [loading, setLoading] = useState(false);
 
-function LoadstringsTab({ scripts, setScripts }) {
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [copiedId, setCopiedId] = useState(null);
+            const obfuscate = () => {
+                setLoading(true);
+                setTimeout(() => {
+                    setOutput(`-- Luanet Obfuscator V1\nlocal _env = getfenv();\nlocal _p = "${btoa(code)}"\nloadstring(Luanet_Decrypt(_p))()`);
+                    setLoading(false);
+                }, 1500);
+            };
 
-  const handleCreate = () => {
-    if (!name.trim() || !code.trim()) return;
-    setScripts([{ id: generateId(), name, code }, ...scripts]);
-    setName(''); setCode('');
-  };
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+                    <div className="space-y-2">
+                        <p className="text-xs font-bold text-slate-500 uppercase">Input Source</p>
+                        <textarea value={code} onChange={e => setCode(e.target.value)} className="w-full h-96 bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-sm text-emerald-400 outline-none focus:border-indigo-500" placeholder="Paste script..." />
+                        <button onClick={obfuscate} className="w-full bg-indigo-600 py-3 rounded-lg text-white font-bold hover:bg-indigo-700 transition-all">Protect Script</button>
+                    </div>
+                    <div className="space-y-2 relative">
+                        <p className="text-xs font-bold text-slate-500 uppercase">Obfuscated Code</p>
+                        <textarea readOnly value={output} className="w-full h-96 bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-sm text-slate-500 outline-none" placeholder="Protected output..." />
+                        {loading && <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center rounded-xl"><Shield className="animate-bounce text-indigo-500 mb-2" /><span>Encrypting...</span></div>}
+                    </div>
+                </div>
+            );
+        }
 
-  const copyLink = (id) => {
-    const loadstring = `loadstring(game:HttpGet("${BASE_URL}/raw/${id}"))()`;
-    navigator.clipboard.writeText(loadstring);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+        function SimulatorTab({ scripts }) {
+            const [selected, setSelected] = useState('');
+            const [res, setRes] = useState(null);
 
-  return (
-    <div className="max-w-4xl space-y-8">
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg">
-        <h2 className="text-white font-medium mb-4 flex items-center"><Plus className="mr-2 text-indigo-400" size={20}/> New Loadstring</h2>
-        <div className="space-y-4">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Script Name" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white outline-none focus:border-indigo-500" />
-          <textarea value={code} onChange={e => setCode(e.target.value)} placeholder="Paste your Lua script here..." rows={6} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-emerald-400 font-mono text-sm outline-none focus:border-indigo-500" />
-          <button onClick={handleCreate} disabled={!name || !code} className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-medium transition-all">Generate Link</button>
-        </div>
-      </div>
+            const test = (isBrowser) => {
+                const script = scripts.find(s => s.id === selected);
+                if (!script) return;
+                if (isBrowser) {
+                    setRes({ status: 403, body: "Scripts cannot be shown in-browser", ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/Browser" });
+                } else {
+                    setRes({ status: 200, body: script.code, ua: "Roblox/WinInet (Executor)" });
+                }
+            };
 
-      <div className="space-y-4">
-        <h3 className="text-white font-medium">Active Endpoints</h3>
-        {scripts.map(s => (
-          <div key={s.id} className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center justify-between">
-            <div className="truncate pr-4">
-              <p className="text-white font-medium">{s.name}</p>
-              <code className="text-xs text-indigo-400">{BASE_URL}/raw/{s.id}</code>
-            </div>
-            <button onClick={() => copyLink(s.id)} className="p-2 bg-slate-950 rounded border border-slate-800 hover:text-white transition-all">
-              {copiedId === s.id ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+            return (
+                <div className="max-w-3xl space-y-6">
+                    <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-xl">
+                        <h2 className="text-white mb-4">API Tester (Simulation)</h2>
+                        <select value={selected} onChange={e => setSelected(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg mb-4 text-white outline-none">
+                            <option value="">Select Script to Test</option>
+                            {scripts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                        <div className="flex gap-4">
+                            <button onClick={() => test(true)} disabled={!selected} className="flex-1 bg-slate-800 p-4 rounded-xl border border-slate-700 hover:bg-slate-700 text-sm font-bold disabled:opacity-50 transition-all">Try in Browser</button>
+                            <button onClick={() => test(false)} disabled={!selected} className="flex-1 bg-indigo-600/20 p-4 rounded-xl border border-indigo-500/50 hover:bg-indigo-600/30 text-indigo-400 text-sm font-bold disabled:opacity-50 transition-all">Try in Executor</button>
+                        </div>
+                    </div>
+                    {res && (
+                        <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-xs shadow-2xl">
+                            <p className="text-slate-500 mb-4 uppercase tracking-widest font-bold">Server Response</p>
+                            <p className="mb-2"><span className="text-indigo-400">GET</span> {BASE_URL}/raw/{selected}</p>
+                            <p className="mb-4"><span className="text-indigo-400">User-Agent:</span> {res.ua}</p>
+                            <div className={`p-4 rounded-lg border ${res.status === 200 ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-red-500/5 border-red-500/20 text-red-400'}`}>
+                                {res.status === 403 ? (
+                                    <div className="text-center py-4">
+                                        <Lock size={24} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-base font-sans font-bold">{res.body}</p>
+                                    </div>
+                                ) : <pre className="whitespace-pre-wrap">{res.body}</pre>}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
-function ObfuscatorTab() {
-  const [code, setCode] = useState('');
-  const [output, setOutput] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const obfuscate = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setOutput(`-- Luanet Obfuscator V1\nlocal _env = getfenv();\nlocal _p = "${btoa(code)}"\nloadstring(Luanet_Decrypt(_p))()`);
-      setLoading(false);
-    }, 1500);
-  };
-
-  return (
-    <div className="grid grid-cols-2 gap-6 max-w-5xl">
-      <div className="space-y-2">
-        <p className="text-xs font-bold text-slate-500 uppercase">Input Source</p>
-        <textarea value={code} onChange={e => setCode(e.target.value)} className="w-full h-96 bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-sm text-emerald-400 outline-none focus:border-indigo-500" placeholder="Paste script..." />
-        <button onClick={obfuscate} className="w-full bg-indigo-600 py-3 rounded-lg text-white font-bold hover:bg-indigo-700 transition-all">Protect Script</button>
-      </div>
-      <div className="space-y-2 relative">
-        <p className="text-xs font-bold text-slate-500 uppercase">Obfuscated Code</p>
-        <textarea readOnly value={output} className="w-full h-96 bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-sm text-slate-500 outline-none" placeholder="Protected output..." />
-        {loading && <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center rounded-xl"><Shield className="animate-bounce text-indigo-500 mb-2" /><span>Encrypting...</span></div>}
-      </div>
-    </div>
-  );
-}
-
-function SimulatorTab({ scripts }) {
-  const [selected, setSelected] = useState('');
-  const [res, setRes] = useState(null);
-
-  const test = (isBrowser) => {
-    const script = scripts.find(s => s.id === selected);
-    if (!script) return;
-    if (isBrowser) {
-      setRes({ status: 403, body: "Scripts cannot be shown in-browser", ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/Browser" });
-    } else {
-      setRes({ status: 200, body: script.code, ua: "Roblox/WinInet (Executor)" });
-    }
-  };
-
-  return (
-    <div className="max-w-3xl space-y-6">
-      <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-        <h2 className="text-white mb-4">Request Simulator</h2>
-        <select onChange={e => setSelected(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg mb-4 outline-none">
-          <option value="">Select Script to Test</option>
-          {scripts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        <div className="flex gap-4">
-          <button onClick={() => test(true)} className="flex-1 bg-slate-800 p-4 rounded-xl border border-slate-700 hover:bg-slate-700 text-sm font-bold">Try in Browser</button>
-          <button onClick={() => test(false)} className="flex-1 bg-indigo-600/20 p-4 rounded-xl border border-indigo-500/50 hover:bg-indigo-600/30 text-indigo-400 text-sm font-bold">Try in Executor</button>
-        </div>
-      </div>
-      {res && (
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-xs">
-          <p className="text-slate-500 mb-4 uppercase tracking-widest font-bold">Server Response</p>
-          <p className="mb-2"><span className="text-indigo-400">GET</span> {BASE_URL}/raw/{selected}</p>
-          <p className="mb-4"><span className="text-indigo-400">User-Agent:</span> {res.ua}</p>
-          <div className={`p-4 rounded-lg border ${res.status === 200 ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-red-500/5 border-red-500/20 text-red-400'}`}>
-            {res.status === 403 ? (
-              <div className="text-center py-4">
-                <Lock size={24} className="mx-auto mb-2 opacity-50" />
-                <p className="text-base font-sans font-bold">{res.body}</p>
-              </div>
-            ) : <pre className="whitespace-pre-wrap">{res.body}</pre>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
