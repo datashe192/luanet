@@ -103,46 +103,59 @@
         let currentUser = null;
         let cachedDB = null;
 
-        // SAFE CACHE-BUSTER FETCH (No Versioning Conflicts)
+        // DIAGNOSTIC FETCH
         async function fetchDatabase(forceRefresh = false) {
             if (cachedDB && !forceRefresh) return cachedDB;
-            const cb = new Date().getTime(); // Bypasses browser cache safely
+            const cb = new Date().getTime(); 
             
-            const res = await fetch(`${API_URL}?meta=false&cb=${cb}`, {
-                method: "GET",
-                headers: { "X-Master-Key": API_KEY }
-            });
-            let data = await res.json();
-            
-            if (data.message) {
-                console.error("JSONBin GET Error:", data);
-                if (!cachedDB) throw new Error(data.message);
-                return cachedDB; // fallback
-            }
+            try {
+                const res = await fetch(`${API_URL}?meta=false&cb=${cb}`, {
+                    method: "GET",
+                    headers: { 
+                        "X-Master-Key": API_KEY,
+                        "Content-Type": "application/json"
+                    }
+                });
+                
+                // If JSONBin responds with an error page instead of JSON, we catch it here.
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`JSONBin GET Error ${res.status}: ${errText}`);
+                }
 
-            if (!data) data = {};
-            if (!data.Users) data.Users = [];
-            if (!data.Scripts) data.Scripts = []; // Auto-builds the schema if missing
-            cachedDB = data;
-            return data;
+                let data = await res.json();
+                
+                if (!data) data = {};
+                if (!data.Users) data.Users = [];
+                if (!data.Scripts) data.Scripts = [];
+                cachedDB = data;
+                return data;
+
+            } catch (err) {
+                throw new Error(`Fetch Error: ${err.message}`);
+            }
         }
 
-        // SAFE UPDATE (Stripped X-Bin-Versioning to fix Free Tier block)
+        // DIAGNOSTIC UPDATE
         async function updateDatabase(payload) {
-            const res = await fetch(API_URL, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Master-Key": API_KEY
-                },
-                body: JSON.stringify(payload)
-            });
-            
-            if (!res.ok) {
-                const errText = await res.text();
-                throw new Error(`[API Error ${res.status}] ${errText}`);
+            try {
+                const res = await fetch(API_URL, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Master-Key": API_KEY
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`JSONBin PUT Error ${res.status}: ${errText}`);
+                }
+                cachedDB = payload; 
+            } catch (err) {
+                throw new Error(`Update Error: ${err.message}`);
             }
-            cachedDB = payload; 
         }
 
         function toggleAuthMode() {
@@ -165,7 +178,7 @@
             setTimeout(() => {
                 toast.classList.add("translate-y-10", "opacity-0");
                 setTimeout(() => toast.remove(), 300);
-            }, 5000); // 5 sec duration for error reading
+            }, 7000); // Extended to 7 seconds so you can read the error
         }
 
         async function handleAuth() {
@@ -202,8 +215,9 @@
                     }
                 }
             } catch (err) {
-                showToast("Network protocol failure. Please retry.", true);
-                console.error(err);
+                // THIS WILL NOW SHOW THE EXACT ERROR
+                showToast(`Crash: ${err.message}`, true);
+                console.error("FULL CRASH LOG:", err);
             } finally {
                 btn.disabled = false;
                 btn.textContent = isLoginMode ? "Log In" : "Sign Up";
@@ -220,7 +234,6 @@
         function switchTab(tabId) {
             document.getElementById("tab-lua-scripts").classList.add("hidden");
             document.getElementById("tab-editor").classList.add("hidden");
-            
             document.getElementById("view-actions").classList.add("hidden");
 
             if (tabId === 'lua-scripts') {
@@ -264,7 +277,7 @@
                 btn.textContent = "Publishing...";
                 
                 const db = await fetchDatabase(true);
-                const randomId = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('') + "y5thgyebygdf7yg6ydgdf";
+                const randomId = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
                 
                 db.Scripts.push({
                     id: randomId,
@@ -279,7 +292,6 @@
                 showToast("Script pushed successfully.");
                 switchTab('lua-scripts');
             } catch (err) {
-                // If this fails, the toast will now show you the EXACT raw server error so you can tell me!
                 showToast(`Publish Blocked: ${err.message}`, true);
                 console.error(err);
             } finally {
@@ -298,7 +310,7 @@
                 showToast("Payload wiped.");
                 renderScripts();
             } catch(err) {
-                showToast("Failed to execute payload deletion.", true);
+                showToast(`Delete Failed: ${err.message}`, true);
             }
         }
 
@@ -337,7 +349,7 @@
                     });
                 }
             } catch (err) {
-                showToast("Failed to fetch scripts array.", true);
+                showToast(`Render Error: ${err.message}`, true);
             }
         }
 
@@ -352,3 +364,4 @@
     </script>
 </body>
 </html>
+
