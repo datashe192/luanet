@@ -6,7 +6,6 @@
     <title>Luanet Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* Custom scrollbar and code editor utilities */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #111827; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
@@ -64,7 +63,6 @@
 
         <!-- Dynamic Content Engine -->
         <main class="flex-1 bg-gray-950 flex flex-col h-screen overflow-hidden">
-            <!-- Top Navbar Bar -->
             <header class="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-gray-900/40 backdrop-blur-md shrink-0">
                 <h2 id="view-title" class="text-lg font-semibold text-white">Lua Scripts Dashboard</h2>
                 <div id="view-actions">
@@ -72,14 +70,10 @@
                 </div>
             </header>
 
-            <!-- Inner View Content Manager -->
             <div class="flex-1 p-8 overflow-y-auto custom-scrollbar">
-                
                 <!-- Tab: Script Inventory View -->
                 <div id="tab-lua-scripts" class="block">
-                    <div id="scripts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Instanced Scripts Inject Here Dynamically -->
-                    </div>
+                    <div id="scripts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                     <div id="empty-state" class="hidden text-center py-12 border border-dashed border-gray-800 rounded-xl">
                         <p class="text-gray-500 text-sm">No scripts compiled yet. Click 'Create Lua Script' to begin deployment.</p>
                     </div>
@@ -93,23 +87,18 @@
                         <button onclick="saveCompiledScript()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-md">Save & Publish</button>
                     </div>
                     
-                    <!-- Advanced Plain Codebox Component container -->
                     <div class="flex-1 min-h-[400px] bg-gray-900 border border-gray-800 rounded-xl flex overflow-hidden font-mono text-sm relative">
-                        <!-- Line Counter Strip -->
                         <div id="line-gutter" class="w-12 bg-gray-950/60 text-right pr-3 pt-4 text-gray-600 select-none border-r border-gray-800/40 overflow-hidden leading-6">1</div>
-                        <!-- Source Input Field -->
                         <textarea id="script-body" oninput="syncEditorMetrics()" onscroll="syncEditorScrolling()" placeholder="-- Enter your clean Luau execution sequence here..." class="flex-1 p-4 bg-transparent outline-none resize-none overflow-y-auto custom-scrollbar leading-6 text-blue-300 z-10" spellcheck="false"></textarea>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
 
-    <!-- NOTIFICATION CONTROLLER -->
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 border border-gray-800 px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 text-sm flex items-center space-x-2"></div>
 
-    <!-- CORE INTEGRATION LOGIC -->
+    <!-- CORE INTEGRATION LOGIC WITH INSTANT STATE CACHING -->
     <script>
         const BIN_ID = "6a0f135bee5a733b12f7d4ec";
         const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq";
@@ -117,8 +106,8 @@
 
         let isSignUpMode = false;
         let currentUser = localStorage.getItem("luanet_user") || null;
+        let cachedDB = null; // Fixes JSONBin Read-After-Write latency bugs
 
-        // Life-cycle Bootloader
         window.addEventListener("DOMContentLoaded", () => {
             if (currentUser) {
                 initDashboard();
@@ -141,14 +130,24 @@
             document.getElementById("auth-toggle").textContent = isSignUpMode ? "Already have an account? Log In" : "Don't have an account? Sign Up";
         }
 
-        async function fetchDatabase() {
+        async function fetchDatabase(forceRefresh = false) {
+            if (cachedDB && !forceRefresh) return cachedDB;
+            
             const res = await fetch(API_URL, {
                 headers: { "X-Master-Key": API_KEY, "X-Bin-Meta": "false" }
             });
-            return await res.json();
+            let data = await res.json();
+            
+            if (!data) data = {};
+            if (!data.Users) data.Users = [];
+            if (!data.Scripts) data.Scripts = [];
+            
+            cachedDB = data;
+            return data;
         }
 
         async function updateDatabase(payload) {
+            cachedDB = payload; // Instantly mirror local memory map
             await fetch(API_URL, {
                 method: "PUT",
                 headers: {
@@ -169,9 +168,7 @@
                 document.getElementById("auth-primary-btn").disabled = true;
                 document.getElementById("auth-primary-btn").textContent = "Processing Stream...";
                 
-                const db = await fetchDatabase();
-                if (!db.Users) db.Users = [];
-                if (!db.Scripts) db.Scripts = [];
+                const db = await fetchDatabase(true); // Force clean update on login
 
                 if (isSignUpMode) {
                     const trackingCheck = db.Users.find(u => u.username.toLowerCase() === userInp.toLowerCase());
@@ -262,10 +259,8 @@
 
             try {
                 showToast("Publishing script to global runtime...");
-                const db = await fetchDatabase();
-                if (!db.Scripts) db.Scripts = [];
+                const db = await fetchDatabase(); 
 
-                // Generate a cryptographically clean random identifier asset string matching user parameters
                 const randomId = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('') + "y5thgyebygdf7yg6ydgdf";
                 
                 db.Scripts.push({
@@ -291,7 +286,7 @@
 
             try {
                 const db = await fetchDatabase();
-                const userScripts = (db.Scripts || []).filter(s => s.author === currentUser);
+                const userScripts = db.Scripts.filter(s => s.author === currentUser);
 
                 if (userScripts.length === 0) {
                     empty.classList.remove("hidden");
@@ -303,8 +298,14 @@
                     const card = document.createElement("div");
                     card.className = "bg-gray-900 border border-gray-800 p-5 rounded-xl flex flex-col justify-between hover:border-gray-700 transition-colors";
                     
-                    // Determine the clean visual path structure
-                    const targetPath = `${window.location.origin}${window.location.pathname.replace('index.html','')}api/?id=${scr.id}`;
+                    // INTALIGENT GITHUB PATHING DETECTOR: Escapes deep subfolders to target the root /api/ directory safely
+                    let targetPath = "";
+                    if (window.location.hostname.includes("github.io")) {
+                        const repoName = window.location.pathname.split('/')[1];
+                        targetPath = `${window.location.origin}/${repoName}/api/?id=${scr.id}`;
+                    } else {
+                        targetPath = `${window.location.origin}/api/?id=${scr.id}`;
+                    }
                     
                     card.innerHTML = `
                         <div>
@@ -319,6 +320,7 @@
                 });
             } catch(e) {
                 showToast("Critical operational failure pulling assets.", true);
+                console.error(e);
             }
         }
     </script>
