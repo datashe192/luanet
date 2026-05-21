@@ -41,7 +41,6 @@
 
     <!-- MAIN DASHBOARD SYSTEM -->
     <div id="dashboard-container" class="hidden flex min-h-screen">
-        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
             <div class="p-6 border-b border-gray-800">
                 <div class="flex items-center space-x-2">
@@ -61,7 +60,6 @@
             </div>
         </aside>
 
-        <!-- Dynamic Content Engine -->
         <main class="flex-1 bg-gray-950 flex flex-col h-screen overflow-hidden">
             <header class="h-16 border-b border-gray-800 flex items-center justify-between px-8 bg-gray-900/40 backdrop-blur-md shrink-0">
                 <h2 id="view-title" class="text-lg font-semibold text-white">Lua Scripts Dashboard</h2>
@@ -71,7 +69,6 @@
             </header>
 
             <div class="flex-1 p-8 overflow-y-auto custom-scrollbar">
-                <!-- Tab: Script Inventory View -->
                 <div id="tab-lua-scripts" class="block">
                     <div id="scripts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                     <div id="empty-state" class="hidden text-center py-12 border border-dashed border-gray-800 rounded-xl">
@@ -79,12 +76,11 @@
                     </div>
                 </div>
 
-                <!-- Tab: Immersive Interactive Editor -->
                 <div id="tab-editor" class="hidden h-full flex flex-col space-y-4">
                     <div class="flex gap-4">
                         <input type="text" id="script-title" placeholder="Script Name (e.g., Anti-Cheat System)" class="flex-1 bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors">
                         <button onclick="switchTab('lua-scripts')" class="bg-gray-800 hover:bg-gray-700 text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer">Cancel</button>
-                        <button onclick="saveCompiledScript()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-md">Save & Publish</button>
+                        <button onclick="saveCompiledScript()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-md" id="save-btn">Save & Publish</button>
                     </div>
                     
                     <div class="flex-1 min-h-[400px] bg-gray-900 border border-gray-800 rounded-xl flex overflow-hidden font-mono text-sm relative">
@@ -98,7 +94,6 @@
 
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 border border-gray-800 px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 text-sm flex items-center space-x-2"></div>
 
-    <!-- CORE INTEGRATION LOGIC WITH INSTANT STATE CACHING -->
     <script>
         const BIN_ID = "6a0f135bee5a733b12f7d4ec";
         const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq";
@@ -106,7 +101,7 @@
 
         let isSignUpMode = false;
         let currentUser = localStorage.getItem("luanet_user") || null;
-        let cachedDB = null; // Fixes JSONBin Read-After-Write latency bugs
+        let cachedDB = null;
 
         window.addEventListener("DOMContentLoaded", () => {
             if (currentUser) {
@@ -133,8 +128,14 @@
         async function fetchDatabase(forceRefresh = false) {
             if (cachedDB && !forceRefresh) return cachedDB;
             
-            const res = await fetch(API_URL, {
-                headers: { "X-Master-Key": API_KEY, "X-Bin-Meta": "false" }
+            // FIX 1: Add '/latest' and 'cache: no-store' to physically force the browser to skip cache on refresh
+            const res = await fetch(API_URL + "/latest", {
+                method: "GET",
+                headers: { 
+                    "X-Master-Key": API_KEY, 
+                    "X-Bin-Meta": "false" 
+                },
+                cache: "no-store" 
             });
             let data = await res.json();
             
@@ -147,15 +148,20 @@
         }
 
         async function updateDatabase(payload) {
-            cachedDB = payload; // Instantly mirror local memory map
-            await fetch(API_URL, {
+            cachedDB = payload; 
+            const res = await fetch(API_URL, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Master-Key": API_KEY
+                    "X-Master-Key": API_KEY,
+                    "X-Bin-Versioning": "false" // FIX 2: Stop JSONBin from making copies of data to prevent bin breaking
                 },
                 body: JSON.stringify(payload)
             });
+            
+            if (!res.ok) {
+                throw new Error("Failed to write to JSONBin");
+            }
         }
 
         async function handleAuth() {
@@ -166,9 +172,9 @@
 
             try {
                 document.getElementById("auth-primary-btn").disabled = true;
-                document.getElementById("auth-primary-btn").textContent = "Processing Stream...";
+                document.getElementById("auth-primary-btn").textContent = "Processing...";
                 
-                const db = await fetchDatabase(true); // Force clean update on login
+                const db = await fetchDatabase(true); 
 
                 if (isSignUpMode) {
                     const trackingCheck = db.Users.find(u => u.username.toLowerCase() === userInp.toLowerCase());
@@ -218,7 +224,8 @@
                 document.getElementById("view-actions").classList.remove("hidden");
                 document.getElementById("tab-lua-scripts").classList.remove("hidden");
                 document.getElementById("tab-editor").classList.add("hidden");
-                renderUserScripts();
+                // Always force a fresh fetch when switching back to the grid to catch cross-tab updates
+                renderUserScripts(true); 
             } else if (target === 'editor') {
                 document.getElementById("view-title").textContent = "Dynamic Code Compiler";
                 document.getElementById("view-actions").classList.add("hidden");
@@ -254,12 +261,14 @@
         async function saveCompiledScript() {
             const title = document.getElementById("script-title").value.trim();
             const content = document.getElementById("script-body").value;
+            const btn = document.getElementById("save-btn");
 
             if (!title) return showToast("Every script payload must possess a structural title.", true);
 
             try {
-                showToast("Publishing script to global runtime...");
-                const db = await fetchDatabase(); 
+                btn.disabled = true;
+                btn.textContent = "Publishing...";
+                const db = await fetchDatabase(true); // Pull fresh database before saving to avoid overwriting other changes
 
                 const randomId = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('') + "y5thgyebygdf7yg6ydgdf";
                 
@@ -276,16 +285,20 @@
                 switchTab('lua-scripts');
             } catch (err) {
                 showToast("System failed to save payload to database layer.", true);
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Save & Publish";
             }
         }
 
-        async function renderUserScripts() {
+        async function renderUserScripts(forceFresh = false) {
             const grid = document.getElementById("scripts-grid");
             const empty = document.getElementById("empty-state");
             grid.innerHTML = "";
 
             try {
-                const db = await fetchDatabase();
+                const db = await fetchDatabase(forceFresh);
                 const userScripts = db.Scripts.filter(s => s.author === currentUser);
 
                 if (userScripts.length === 0) {
@@ -298,7 +311,6 @@
                     const card = document.createElement("div");
                     card.className = "bg-gray-900 border border-gray-800 p-5 rounded-xl flex flex-col justify-between hover:border-gray-700 transition-colors";
                     
-                    // INTALIGENT GITHUB PATHING DETECTOR: Escapes deep subfolders to target the root /api/ directory safely
                     let targetPath = "";
                     if (window.location.hostname.includes("github.io")) {
                         const repoName = window.location.pathname.split('/')[1];
