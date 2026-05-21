@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protected Script Gateway</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center p-6 font-sans selection:bg-red-500/30">
+
+    <!-- BROWSER PROTECTION LAYER -->
+    <div class="w-full max-w-2xl bg-gray-900 border border-red-900/30 rounded-2xl p-8 shadow-2xl relative overflow-hidden text-center">
+        <div class="absolute top-0 left-0 w-full h-1 bg-red-600"></div>
+        
+        <div class="w-16 h-16 bg-red-950/50 border border-red-500/20 text-red-500 flex items-center justify-center rounded-2xl mx-auto mb-6 text-2xl font-bold font-mono">!</div>
+        
+        <h1 class="text-2xl font-black text-white tracking-tight mb-2">Script can't be accessed from Browser</h1>
+        <p class="text-sm text-gray-400 font-medium tracking-wide uppercase text-xs text-red-400/80 mb-8">Protected by Luanet</p>
+
+        <p class="text-xs text-gray-500 text-left mb-2 uppercase font-semibold tracking-wider px-1">Roblox Execution String</p>
+        <div class="bg-gray-950 border border-gray-800 rounded-xl p-4 font-mono text-xs text-left relative group">
+            <code id="loadstring-display" class="text-emerald-400 block break-all whitespace-pre-wrap select-all">-- Processing network asset index...</code>
+        </div>
+        <p class="text-[11px] text-gray-500 mt-3 text-center">Execute this string structure inside your internal script exec executor container environment.</p>
+    </div>
+
+    <!-- ISOLATED SCRIPT SOURCE DATA CONTAINER FOR ROBLOX SCRAPER ENGINE -->
+    <!-- [LUANET_START] -->
+    <div id="luanet-raw-payload-wrapper" style="display: none !important;" hidden>-- CLOUD ASSET COMPILING SYSTEM DEPLOYED --</div>
+    <!-- [LUANET_END] -->
+
+    <script>
+        const BIN_ID = "6a0f135bee5a733b12f7d4ec";
+        const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq";
+
+        // Extract ID argument from live browser navigation object 
+        const urlParams = new URLSearchParams(window.location.search);
+        const scriptId = urlParams.get('id');
+
+        if (!scriptId) {
+            document.getElementById("loadstring-display").textContent = `-- Error: Missing script structural parameter (?id=)`;
+        } else {
+            // Generate clean un-bypassable visual output representation string
+            const currentOrigin = window.location.origin + window.location.pathname;
+            const absoluteExecutionString = `loadstring(game:HttpGet("${currentOrigin}?id=${scriptId}"))()`;
+            document.getElementById("loadstring-display").textContent = absoluteExecutionString;
+
+            // Fetch structural data payload asynchronously from database cluster to serve wrapper injection
+            fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                headers: { "X-Master-Key": API_KEY, "X-Bin-Meta": "false" }
+            })
+            .then(res => res.json())
+            .then(db => {
+                const liveAsset = (db.Scripts || []).find(s => s.id === scriptId);
+                if (liveAsset) {
+                    // Populate hidden injection tag wrapper cleanly for HTTP processing extraction mechanics
+                    document.getElementById("luanet-raw-payload-wrapper").textContent = liveAsset.content;
+                } else {
+                    document.getElementById("luanet-raw-payload-wrapper").textContent = "-- Error: Target production script asset string could not be parsed inside database.";
+                }
+            })
+            .catch(() => {
+                document.getElementById("luanet-raw-payload-wrapper").textContent = "-- Error: Microservice validation channel connection error.";
+            });
+        }
+    </script>
+</body>
+</html>
