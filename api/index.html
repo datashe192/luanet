@@ -8,44 +8,74 @@
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center p-6 font-sans selection:bg-red-500/30">
 
-    <!-- BROWSER PROTECTION LAYER -->
-    <div class="w-full max-w-2xl bg-gray-900 border border-red-900/30 rounded-2xl p-8 shadow-2xl relative overflow-hidden text-center">
-        <div class="absolute top-0 left-0 w-full h-1 bg-red-600"></div>
-        
-        <div class="w-16 h-16 bg-red-950/50 border border-red-500/20 text-red-500 flex items-center justify-center rounded-2xl mx-auto mb-6 text-2xl font-bold font-mono">!</div>
-        
-        <h1 class="text-2xl font-black text-white tracking-tight mb-2">Script can't be accessed from Browser</h1>
-        <p class="text-sm text-gray-400 font-medium tracking-wide uppercase text-xs text-red-400/80 mb-8">Protected by Luanet</p>
-
-        <p class="text-xs text-gray-500 text-left mb-2 uppercase font-semibold tracking-wider px-1">Roblox Execution String</p>
-        <div class="bg-gray-950 border border-gray-800 rounded-xl p-4 font-mono text-xs text-left relative group">
-            <code id="loadstring-display" class="text-emerald-400 block break-all whitespace-pre-wrap select-all">-- Processing network asset index...</code>
+    <!-- MAIN INTERFACE CONTAINER -->
+    <div id="content-card" class="w-full max-w-2xl bg-gray-900 border border-red-900/30 rounded-2xl p-8 shadow-2xl relative overflow-hidden text-center">
+        <!-- Structural components are injected below dynamically based on ID validation status -->
+        <div id="loading-state" class="py-12 font-mono text-sm text-gray-500 animate-pulse">
+            Establishing secure handshake channel...
         </div>
-        <p class="text-[11px] text-gray-500 mt-3 text-center">Execute this string structure inside your internal script exec executor container environment.</p>
     </div>
 
     <!-- ISOLATED SCRIPT SOURCE DATA CONTAINER FOR ROBLOX SCRAPER ENGINE -->
     <!-- [LUANET_START] -->
-    <div id="luanet-raw-payload-wrapper" style="display: none !important;" hidden>-- CLOUD ASSET COMPILING SYSTEM DEPLOYED --</div>
+    <div id="luanet-raw-payload-wrapper" style="display: none !important;" hidden></div>
     <!-- [LUANET_END] -->
 
     <script>
         const BIN_ID = "6a0f135bee5a733b12f7d4ec";
         const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq";
 
-        // Extract ID argument from live browser navigation object 
         const urlParams = new URLSearchParams(window.location.search);
         const scriptId = urlParams.get('id');
+        const card = document.getElementById("content-card");
+        const rawWrapper = document.getElementById("luanet-raw-payload-wrapper");
 
-        if (!scriptId) {
-            document.getElementById("loadstring-display").textContent = `-- Error: Missing script structural parameter (?id=)`;
-        } else {
-            // Generate clean un-bypassable visual output representation string
+        // Helper function to resolve your repository's dashboard path dynamically
+        function getDashboardUrl() {
+            if (window.location.hostname.includes("github.io")) {
+                const repoName = window.location.pathname.split('/')[1];
+                return `${window.location.origin}/${repoName}/Dashboard/Lua-Scripts/`;
+            }
+            return `${window.location.origin}/Dashboard/Lua-Scripts/`;
+        }
+
+        function renderProtectionScreen(id) {
             const currentOrigin = window.location.origin + window.location.pathname;
-            const absoluteExecutionString = `loadstring(game:HttpGet("${currentOrigin}?id=${scriptId}"))()`;
-            document.getElementById("loadstring-display").textContent = absoluteExecutionString;
+            const absoluteExecutionString = `loadstring(game:HttpGet("${currentOrigin}?id=${id}"))()`;
+            
+            card.innerHTML = `
+                <div class="absolute top-0 left-0 w-full h-1 bg-red-600"></div>
+                <div class="w-16 h-16 bg-red-950/50 border border-red-500/20 text-red-500 flex items-center justify-center rounded-2xl mx-auto mb-6 text-2xl font-bold font-mono">!</div>
+                <h1 class="text-2xl font-black text-white tracking-tight mb-2">Script can't be accessed from Browser</h1>
+                <p class="text-sm text-gray-400 font-medium tracking-wide uppercase text-xs text-red-400/80 mb-8">Protected by Luanet</p>
+                <p class="text-xs text-gray-500 text-left mb-2 uppercase font-semibold tracking-wider px-1">Roblox Execution String</p>
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-4 font-mono text-xs text-left relative">
+                    <code class="text-emerald-400 block break-all whitespace-pre-wrap select-all">${absoluteExecutionString}</code>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-3 text-center mb-6">Execute this string structure inside your internal script executor container environment.</p>
+                <a href="${getDashboardUrl()}" class="inline-block bg-gray-800 hover:bg-gray-700 text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer border border-gray-700/60">
+                    Return to Dashboard
+                </a>
+            `;
+        }
 
-            // Fetch structural data payload asynchronously from database cluster to serve wrapper injection
+        function renderNotFoundScreen() {
+            card.innerHTML = `
+                <div class="absolute top-0 left-0 w-full h-1 bg-yellow-600"></div>
+                <div class="w-16 h-16 bg-yellow-950/40 border border-yellow-500/20 text-yellow-500 flex items-center justify-center rounded-2xl mx-auto mb-6 text-2xl font-bold font-mono">?</div>
+                <h1 class="text-2xl font-black text-white tracking-tight mb-2">Page Not Found or Deleted</h1>
+                <p class="text-sm text-gray-400 max-w-md mx-auto mb-8">The specific cloud configuration layer you are attempting to trace does not exist or has expired.</p>
+                <a href="${getDashboardUrl()}" class="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-6 py-2.5 rounded-lg transition-colors cursor-pointer shadow-md shadow-blue-600/10">
+                    Take me to Dashboard
+                </a>
+            `;
+        }
+
+        // Execution Gateway Verification System
+        if (!scriptId) {
+            renderNotFoundScreen();
+            rawWrapper.textContent = "-- Error: Null routing script configuration matrix.";
+        } else {
             fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                 headers: { "X-Master-Key": API_KEY, "X-Bin-Meta": "false" }
             })
@@ -53,14 +83,16 @@
             .then(db => {
                 const liveAsset = (db.Scripts || []).find(s => s.id === scriptId);
                 if (liveAsset) {
-                    // Populate hidden injection tag wrapper cleanly for HTTP processing extraction mechanics
-                    document.getElementById("luanet-raw-payload-wrapper").textContent = liveAsset.content;
+                    rawWrapper.textContent = liveAsset.content;
+                    renderProtectionScreen(scriptId);
                 } else {
-                    document.getElementById("luanet-raw-payload-wrapper").textContent = "-- Error: Target production script asset string could not be parsed inside database.";
+                    rawWrapper.textContent = "-- Error: Target production script asset string could not be parsed inside database.";
+                    renderNotFoundScreen();
                 }
             })
             .catch(() => {
-                document.getElementById("luanet-raw-payload-wrapper").textContent = "-- Error: Microservice validation channel connection error.";
+                rawWrapper.textContent = "-- Error: Microservice validation channel connection error.";
+                renderNotFoundScreen();
             });
         }
     </script>
