@@ -94,11 +94,10 @@
         </main>
     </div>
 
-    <!-- SCRIPT INJECTION -->
-      <!-- SCRIPT INJECTION -->
+        <!-- SCRIPT INJECTION -->
     <script>
         const API_URL = "https://api.jsonbin.io/v3/b/6a0f135bee5a733b12f7d4ec"; 
-        const API_KEY = "$2a$10$tZk5dDEH4qfK/fM7K7gI3u4fR1bUaY6R.MtoQ/X0G9PjI.O5O/81G";
+        const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq";
 
         let isLoginMode = true;
         let currentUser = null;
@@ -113,7 +112,7 @@
                 const res = await fetch(`${API_URL}?meta=false&cb=${cb}`, {
                     method: "GET",
                     headers: { 
-                        "X-Access-Key": API_KEY, // FIXED HERE
+                        "X-Access-Key": API_KEY,
                         "Content-Type": "application/json"
                     }
                 });
@@ -143,7 +142,7 @@
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-Access-Key": API_KEY // FIXED HERE
+                        "X-Access-Key": API_KEY
                     },
                     body: JSON.stringify(payload)
                 });
@@ -361,6 +360,7 @@
             document.getElementById("auth-container").classList.remove("hidden");
         }
     </script>
+
 
 </body>
 </html>
