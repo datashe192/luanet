@@ -84,178 +84,172 @@
                     </div>
                     
                     <div class="flex-1 min-h-[400px] bg-gray-900 border border-gray-800 rounded-xl flex overflow-hidden font-mono text-sm relative">
-                        <div id="line-gutter" class="w-12 bg-gray-950/60 text-right pr-3 pt-4 text-gray-600 select-none border-r border-gray-800/40 overflow-hidden leading-6">1</div>
-                        <textarea id="script-body" oninput="syncEditorMetrics()" onscroll="syncEditorScrolling()" placeholder="-- Enter your clean Luau execution sequence here..." class="flex-1 p-4 bg-transparent outline-none resize-none overflow-y-auto custom-scrollbar leading-6 text-blue-300 z-10" spellcheck="false"></textarea>
+                        <div id="line-gutter" class="w-12 bg-gray-950 border-r border-gray-800 text-right pr-3 py-4 text-gray-600 select-none custom-scrollbar overflow-hidden">
+                            1
+                        </div>
+                        <textarea id="script-body" spellcheck="false" class="flex-1 bg-transparent text-gray-300 p-4 outline-none resize-none custom-scrollbar whitespace-pre leading-normal" oninput="updateLineNumbers()" onscroll="syncGutter()"></textarea>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 border border-gray-800 px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 text-sm flex items-center space-x-2"></div>
-
+    <!-- SCRIPT INJECTION -->
     <script>
-        const BIN_ID = "6a0f135bee5a733b12f7d4ec";
-        const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq";
-        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+        const API_URL = "https://api.jsonbin.io/v3/b/6a0f135bee5a733b12f7d4ec"; 
+        const API_KEY = "$2a$10$tZk5dDEH4qfK/fM7K7gI3u4fR1bUaY6R.MtoQ/X0G9PjI.O5O/81G";
 
-        let isSignUpMode = false;
-        let currentUser = localStorage.getItem("luanet_user") || null;
+        let isLoginMode = true;
+        let currentUser = null;
         let cachedDB = null;
 
-        window.addEventListener("DOMContentLoaded", () => {
-            if (currentUser) {
-                initDashboard();
-            }
-        });
-
-        function showToast(msg, isError = false) {
-            const toast = document.getElementById("toast");
-            toast.textContent = msg;
-            toast.className = `fixed bottom-5 right-5 bg-gray-900 border ${isError ? 'border-red-500/40 text-red-400' : 'border-emerald-500/40 text-emerald-400'} px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-0 opacity-100 transition-all duration-300 text-sm`;
-            setTimeout(() => {
-                toast.className = "fixed bottom-5 right-5 bg-gray-900 border border-gray-800 px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 text-sm";
-            }, 4000);
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("auth-subtitle").textContent = isSignUpMode ? "Create an absolute credential block inside the network." : "Log in to manage your active cloud environment.";
-            document.getElementById("auth-primary-btn").textContent = isSignUpMode ? "Sign Up" : "Log In";
-            document.getElementById("auth-toggle").textContent = isSignUpMode ? "Already have an account? Log In" : "Don't have an account? Sign Up";
-        }
-
+        // SAFE CACHE-BUSTER FETCH (No Versioning Conflicts)
         async function fetchDatabase(forceRefresh = false) {
             if (cachedDB && !forceRefresh) return cachedDB;
+            const cb = new Date().getTime(); // Bypasses browser cache safely
             
-            // FIX 1: Add '/latest' and 'cache: no-store' to physically force the browser to skip cache on refresh
-            const res = await fetch(API_URL + "/latest", {
+            const res = await fetch(`${API_URL}?meta=false&cb=${cb}`, {
                 method: "GET",
-                headers: { 
-                    "X-Master-Key": API_KEY, 
-                    "X-Bin-Meta": "false" 
-                },
-                cache: "no-store" 
+                headers: { "X-Master-Key": API_KEY }
             });
             let data = await res.json();
             
+            if (data.message) {
+                console.error("JSONBin GET Error:", data);
+                if (!cachedDB) throw new Error(data.message);
+                return cachedDB; // fallback
+            }
+
             if (!data) data = {};
             if (!data.Users) data.Users = [];
-            if (!data.Scripts) data.Scripts = [];
-            
+            if (!data.Scripts) data.Scripts = []; // Auto-builds the schema if missing
             cachedDB = data;
             return data;
         }
 
+        // SAFE UPDATE (Stripped X-Bin-Versioning to fix Free Tier block)
         async function updateDatabase(payload) {
-            cachedDB = payload; 
             const res = await fetch(API_URL, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Master-Key": API_KEY,
-                    "X-Bin-Versioning": "false" // FIX 2: Stop JSONBin from making copies of data to prevent bin breaking
+                    "X-Master-Key": API_KEY
                 },
                 body: JSON.stringify(payload)
             });
             
             if (!res.ok) {
-                throw new Error("Failed to write to JSONBin");
+                const errText = await res.text();
+                throw new Error(`[API Error ${res.status}] ${errText}`);
             }
+            cachedDB = payload; 
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById("auth-primary-btn").textContent = isLoginMode ? "Log In" : "Sign Up";
+            document.getElementById("auth-subtitle").textContent = isLoginMode ? "Log in to manage your active cloud environment." : "Create a secure account to access Luanet.";
+            document.getElementById("auth-toggle").textContent = isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Log In";
+        }
+
+        function showToast(message, isError = false) {
+            const existing = document.getElementById("toast");
+            if(existing) existing.remove();
+
+            const toast = document.createElement("div");
+            toast.id = "toast";
+            toast.className = `fixed bottom-5 right-5 bg-gray-900 border ${isError ? 'border-red-500/40 text-red-400' : 'border-emerald-500/40 text-emerald-400'} px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-0 opacity-100 transition-all duration-300 text-sm max-w-md break-words`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add("translate-y-10", "opacity-0");
+                setTimeout(() => toast.remove(), 300);
+            }, 5000); // 5 sec duration for error reading
         }
 
         async function handleAuth() {
-            const userInp = document.getElementById("auth-user").value.trim();
-            const passInp = document.getElementById("auth-pass").value.trim();
+            const user = document.getElementById("auth-user").value.trim();
+            const pass = document.getElementById("auth-pass").value;
+            const btn = document.getElementById("auth-primary-btn");
 
-            if (!userInp || !passInp) return showToast("All identity fields must be validated.", true);
+            if (!user || !pass) return showToast("Credentials required.", true);
 
             try {
-                document.getElementById("auth-primary-btn").disabled = true;
-                document.getElementById("auth-primary-btn").textContent = "Processing...";
+                btn.disabled = true;
+                btn.textContent = "Authenticating...";
                 
                 const db = await fetchDatabase(true); 
 
-                if (isSignUpMode) {
-                    const trackingCheck = db.Users.find(u => u.username.toLowerCase() === userInp.toLowerCase());
-                    if (trackingCheck) {
-                        document.getElementById("auth-primary-btn").disabled = false;
-                        document.getElementById("auth-primary-btn").textContent = "Sign Up";
-                        return showToast("Entity registration rejected: Username already exists.", true);
+                if (isLoginMode) {
+                    const validUser = db.Users.find(u => u.username === user && u.password === pass);
+                    if (validUser) {
+                        currentUser = user;
+                        showToast("Authentication successful.");
+                        loadDashboard();
+                    } else {
+                        showToast("Invalid credentials.", true);
                     }
-                    db.Users.push({ username: userInp, password: passInp });
-                    await updateDatabase(db);
-                    showToast("Account signed up successfully! Logging in...");
                 } else {
-                    const verified = db.Users.find(u => u.username.toLowerCase() === userInp.toLowerCase() && u.password === passInp);
-                    if (!verified) {
-                        document.getElementById("auth-primary-btn").disabled = false;
-                        document.getElementById("auth-primary-btn").textContent = "Log In";
-                        return showToast("Invalid structural credentials provided.", true);
+                    if (db.Users.some(u => u.username === user)) {
+                        showToast("Identifier already in use.", true);
+                    } else {
+                        db.Users.push({ username: user, password: pass });
+                        await updateDatabase(db);
+                        isLoginMode = true;
+                        toggleAuthMode();
+                        showToast("Account signed up successfully. Proceed to login.");
                     }
                 }
-
-                localStorage.setItem("luanet_user", userInp);
-                currentUser = userInp;
-                initDashboard();
             } catch (err) {
-                showToast("Runtime transmission fault connecting to remote cloud.", true);
+                showToast("Network protocol failure. Please retry.", true);
                 console.error(err);
             } finally {
-                document.getElementById("auth-primary-btn").disabled = false;
+                btn.disabled = false;
+                btn.textContent = isLoginMode ? "Log In" : "Sign Up";
             }
         }
 
-        function initDashboard() {
+        function loadDashboard() {
             document.getElementById("auth-container").classList.add("hidden");
             document.getElementById("dashboard-container").classList.remove("hidden");
-            document.getElementById("user-display").textContent = `@${currentUser}`;
+            document.getElementById("user-display").textContent = `Auth: ${currentUser}`;
             switchTab('lua-scripts');
         }
 
-        function logout() {
-            localStorage.clear();
-            location.reload();
-        }
+        function switchTab(tabId) {
+            document.getElementById("tab-lua-scripts").classList.add("hidden");
+            document.getElementById("tab-editor").classList.add("hidden");
+            
+            document.getElementById("view-actions").classList.add("hidden");
 
-        function switchTab(target) {
-            if (target === 'lua-scripts') {
+            if (tabId === 'lua-scripts') {
+                document.getElementById("tab-lua-scripts").classList.remove("hidden");
                 document.getElementById("view-title").textContent = "Lua Scripts Dashboard";
                 document.getElementById("view-actions").classList.remove("hidden");
-                document.getElementById("tab-lua-scripts").classList.remove("hidden");
-                document.getElementById("tab-editor").classList.add("hidden");
-                // Always force a fresh fetch when switching back to the grid to catch cross-tab updates
-                renderUserScripts(true); 
-            } else if (target === 'editor') {
-                document.getElementById("view-title").textContent = "Dynamic Code Compiler";
-                document.getElementById("view-actions").classList.add("hidden");
-                document.getElementById("tab-lua-scripts").classList.add("hidden");
+                renderScripts();
+            } else if (tabId === 'editor') {
                 document.getElementById("tab-editor").classList.remove("hidden");
+                document.getElementById("view-title").textContent = "Script Configuration";
             }
         }
 
         function openScriptEditor() {
             document.getElementById("script-title").value = "";
             document.getElementById("script-body").value = "";
-            syncEditorMetrics();
+            updateLineNumbers();
             switchTab('editor');
         }
 
-        function syncEditorMetrics() {
-            const body = document.getElementById("script-body");
+        function updateLineNumbers() {
+            const ta = document.getElementById("script-body");
             const gutter = document.getElementById("line-gutter");
-            const count = body.value.split("\n").length;
-            let lineHTML = "";
-            for (let i = 1; i <= count; i++) {
-                lineHTML += `${i}<br>`;
-            }
-            gutter.innerHTML = lineHTML;
+            const lines = ta.value.split('\n').length;
+            gutter.innerHTML = Array.from({length: lines || 1}, (_, i) => i + 1).join('<br>');
         }
 
-        function syncEditorScrolling() {
-            const body = document.getElementById("script-body");
-            const gutter = document.getElementById("line-gutter");
-            gutter.scrollTop = body.scrollTop;
+        function syncGutter() {
+            document.getElementById("line-gutter").scrollTop = document.getElementById("script-body").scrollTop;
         }
 
         async function saveCompiledScript() {
@@ -268,8 +262,8 @@
             try {
                 btn.disabled = true;
                 btn.textContent = "Publishing...";
-                const db = await fetchDatabase(true); // Pull fresh database before saving to avoid overwriting other changes
-
+                
+                const db = await fetchDatabase(true);
                 const randomId = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('') + "y5thgyebygdf7yg6ydgdf";
                 
                 db.Scripts.push({
@@ -281,10 +275,12 @@
                 });
 
                 await updateDatabase(db);
+
                 showToast("Script pushed successfully.");
                 switchTab('lua-scripts');
             } catch (err) {
-                showToast("System failed to save payload to database layer.", true);
+                // If this fails, the toast will now show you the EXACT raw server error so you can tell me!
+                showToast(`Publish Blocked: ${err.message}`, true);
                 console.error(err);
             } finally {
                 btn.disabled = false;
@@ -292,48 +288,66 @@
             }
         }
 
-        async function renderUserScripts(forceFresh = false) {
+        async function deleteScript(id) {
+            if(!confirm("Are you sure you want to completely drop this script from the database?")) return;
+            
+            try {
+                const db = await fetchDatabase(true);
+                db.Scripts = db.Scripts.filter(s => s.id !== id);
+                await updateDatabase(db);
+                showToast("Payload wiped.");
+                renderScripts();
+            } catch(err) {
+                showToast("Failed to execute payload deletion.", true);
+            }
+        }
+
+        async function renderScripts() {
             const grid = document.getElementById("scripts-grid");
             const empty = document.getElementById("empty-state");
             grid.innerHTML = "";
 
             try {
-                const db = await fetchDatabase(forceFresh);
-                const userScripts = db.Scripts.filter(s => s.author === currentUser);
+                const db = await fetchDatabase(true);
+                const myScripts = db.Scripts.filter(s => s.author === currentUser);
 
-                if (userScripts.length === 0) {
+                if (myScripts.length === 0) {
                     empty.classList.remove("hidden");
-                    return;
+                } else {
+                    empty.classList.add("hidden");
+                    myScripts.forEach(script => {
+                        const date = new Date(script.createdAt).toLocaleDateString();
+                        const card = document.createElement("div");
+                        card.className = "bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors flex flex-col h-40 group";
+                        card.innerHTML = `
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-semibold text-gray-200 truncate pr-2">${script.title}</h3>
+                                <button onclick="deleteScript('${script.id}')" class="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mb-4">Deployed: ${date}</p>
+                            <div class="mt-auto">
+                                <div class="bg-gray-950 rounded p-2 text-xs font-mono text-gray-400 truncate border border-gray-800">
+                                    ${script.content ? script.content.substring(0, 30) + '...' : '-- empty --'}
+                                </div>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    });
                 }
-                empty.classList.add("hidden");
-
-                userScripts.forEach(scr => {
-                    const card = document.createElement("div");
-                    card.className = "bg-gray-900 border border-gray-800 p-5 rounded-xl flex flex-col justify-between hover:border-gray-700 transition-colors";
-                    
-                    let targetPath = "";
-                    if (window.location.hostname.includes("github.io")) {
-                        const repoName = window.location.pathname.split('/')[1];
-                        targetPath = `${window.location.origin}/${repoName}/api/?id=${scr.id}`;
-                    } else {
-                        targetPath = `${window.location.origin}/api/?id=${scr.id}`;
-                    }
-                    
-                    card.innerHTML = `
-                        <div>
-                            <h3 class="font-bold text-white text-base truncate">${scr.title}</h3>
-                            <p class="text-xs text-gray-500 mt-1">ID: ${scr.id.substring(0,12)}...</p>
-                        </div>
-                        <div class="mt-6 pt-3 border-t border-gray-800/60 flex items-center justify-between">
-                            <a href="${targetPath}" target="_blank" class="text-xs text-blue-400 hover:underline">Launch API endpoint →</a>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                });
-            } catch(e) {
-                showToast("Critical operational failure pulling assets.", true);
-                console.error(e);
+            } catch (err) {
+                showToast("Failed to fetch scripts array.", true);
             }
+        }
+
+        function logout() {
+            currentUser = null;
+            cachedDB = null;
+            document.getElementById("auth-user").value = "";
+            document.getElementById("auth-pass").value = "";
+            document.getElementById("dashboard-container").classList.add("hidden");
+            document.getElementById("auth-container").classList.remove("hidden");
         }
     </script>
 </body>
