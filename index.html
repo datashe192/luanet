@@ -44,14 +44,14 @@
             </div>
             
             <h1 class="text-2xl font-black tracking-tight mb-2 text-white uppercase">Protected by Luanet</h1>
-            <p class="text-gray-400 text-sm mb-8">Direct API access blocked. Execute the loader below in your environment to inject the payload.</p>
+            <p class="text-gray-400 text-sm mb-6">Direct API access blocked. Execute the loader below in your environment to inject the payload.</p>
 
             <div class="text-left bg-gray-950 border border-gray-800 rounded-lg p-4 relative group">
-                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Roblox Execution String</label>
-                <textarea id="public-loadstring" readonly class="w-full bg-transparent text-emerald-400 font-mono text-xs resize-none outline-none overflow-hidden h-16 selection:bg-emerald-500/30"></textarea>
-                <button onclick="copyLoadstring('public-loadstring')" class="absolute top-4 right-4 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded transition-colors cursor-pointer" title="Copy to clipboard">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                </button>
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 flex justify-between">
+                    <span>Roblox Execution String</span>
+                    <button onclick="copyLoadstring('public-loadstring')" class="text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Copy to clipboard">Copy</button>
+                </label>
+                <textarea id="public-loadstring" readonly class="w-full bg-transparent text-emerald-400 font-mono text-[10px] resize-none outline-none custom-scrollbar h-32 selection:bg-emerald-500/30 whitespace-pre"></textarea>
             </div>
             
             <div class="mt-8 text-xs text-gray-600 font-mono">
@@ -137,7 +137,7 @@
             </div>
             
             <div id="script-modal" class="hidden absolute inset-0 bg-gray-950/90 backdrop-blur-sm z-50 flex items-center justify-center p-8">
-                <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-5xl h-[80vh] flex flex-col shadow-2xl overflow-hidden">
                     <div class="flex justify-between items-center p-5 border-b border-gray-800 bg-gray-900/50">
                         <h3 id="modal-script-title" class="text-lg font-bold text-white">Script Title</h3>
                         <button onclick="closeScriptModal()" class="text-gray-500 hover:text-white transition-colors cursor-pointer">
@@ -150,7 +150,7 @@
                             <pre><code id="modal-raw-code" class="text-sm font-mono text-gray-300 whitespace-pre-wrap break-all"></code></pre>
                         </div>
                         
-                        <div class="w-80 p-5 bg-gray-900 flex flex-col space-y-6">
+                        <div class="w-96 p-5 bg-gray-900 flex flex-col space-y-6">
                             <div>
                                 <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Public Share Link</label>
                                 <div class="flex">
@@ -160,10 +160,10 @@
                                 <p class="text-[10px] text-gray-500 mt-1">Send this link to users. They will see the Lock Screen.</p>
                             </div>
 
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Roblox Loadstring</label>
-                                <textarea id="modal-loadstring" readonly class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-xs font-mono text-emerald-400 resize-none h-20 focus:outline-none"></textarea>
-                                <button onclick="copyLoadstring('modal-loadstring')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium border border-gray-700">Copy Loadstring</button>
+                            <div class="flex-1 flex flex-col">
+                                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Roblox Smart Loader</label>
+                                <textarea id="modal-loadstring" readonly class="flex-1 w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-[10px] font-mono text-emerald-400 resize-none focus:outline-none custom-scrollbar whitespace-pre"></textarea>
+                                <button onclick="copyLoadstring('modal-loadstring')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium border border-gray-700">Copy Loader</button>
                             </div>
                         </div>
                     </div>
@@ -181,36 +181,55 @@
         let currentUser = null;
         let cachedDB = null;
 
+        // Smart Loader Generator
+        function generateSmartLoader(id) {
+            return `-- Luanet Premium Loader
+local req = (syn and syn.request) or request or http_request or (fluxus and fluxus.request)
+if req then
+    local res = req({
+        Url = "${API_URL}",
+        Method = "GET",
+        Headers = { ["X-Access-Key"] = "${API_KEY}", ["X-Bin-Meta"] = "false" }
+    })
+    if res.StatusCode == 200 then
+        local db = game:GetService("HttpService"):JSONDecode(res.Body)
+        local scripts = db.record and db.record.Scripts or db.Scripts
+        if scripts then
+            for _, s in ipairs(scripts) do
+                if s.id == "${id}" then
+                    loadstring(s.content)()
+                    return
+                end
+            end
+        end
+    end
+end
+warn("Luanet: Execution blocked. Payload not found or environment unsupported.")`;
+        }
+
         // --- URL ROUTING LOGIC & VALIDATION ---
         document.addEventListener("DOMContentLoaded", async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const scriptParam = urlParams.get('script');
 
             if (scriptParam) {
-                // Instantly hide auth page and show the loading spinner
                 document.getElementById("auth-container").classList.add("hidden");
                 document.getElementById("loading-container").classList.remove("hidden");
                 
                 try {
-                    // Fetch the database to verify the script exists
                     const db = await fetchDatabase();
                     document.getElementById("loading-container").classList.add("hidden");
                     
-                    // Verify logic: Check if it's in the Scripts array OR the explicit Pages array
                     const existsInScripts = db.Scripts && db.Scripts.some(s => s.id === scriptParam);
                     const existsInPages = db.Pages && db.Pages.includes(scriptParam);
 
                     if (existsInScripts || existsInPages) {
-                        // Success! The ID is verified. Show the Luanet lock screen.
                         document.getElementById("public-view-container").classList.remove("hidden");
-                        const loadstringSnippet = `loadstring(game:HttpGet("https://raw.luanet.cc/script/${scriptParam}"))()`;
-                        document.getElementById("public-loadstring").value = loadstringSnippet;
+                        document.getElementById("public-loadstring").value = generateSmartLoader(scriptParam);
                     } else {
-                        // Fail! The ID is fake or deleted. Show the 404 page.
                         document.getElementById("not-found-container").classList.remove("hidden");
                     }
                 } catch (err) {
-                    // Fail safely to the 404 page if database is completely unreachable
                     document.getElementById("loading-container").classList.add("hidden");
                     document.getElementById("not-found-container").classList.remove("hidden");
                 }
@@ -236,7 +255,6 @@
                 let rawData = await res.json();
                 let data = rawData.record ? rawData.record : rawData;
                 
-                // Initialize core tables ensuring `Pages` exists
                 if (!data) data = {};
                 if (!data.Users) data.Users = [];
                 if (!data.Scripts) data.Scripts = [];
@@ -396,7 +414,6 @@
                     createdAt: new Date().toISOString()
                 });
                 
-                // Add the ID to the Pages array directly to guarantee validation
                 if (!db.Pages) db.Pages = [];
                 db.Pages.push(randomId);
 
@@ -417,13 +434,10 @@
             
             try {
                 const db = await fetchDatabase(true);
-                
-                // Filter out the deleted ID from both arrays
                 db.Scripts = db.Scripts.filter(s => s.id !== id);
                 if (db.Pages) {
                     db.Pages = db.Pages.filter(p => p !== id);
                 }
-                
                 await updateDatabase(db);
                 showToast("Payload wiped.");
                 renderScripts();
@@ -432,18 +446,17 @@
             }
         }
 
-        // View Script Modal
         function openScriptModal(id, title, content) {
             document.getElementById("script-modal").classList.remove("hidden");
             document.getElementById("modal-script-title").textContent = title;
             document.getElementById("modal-raw-code").textContent = content;
             
-            const baseUrl = window.location.href.split('?')[0];
+            // Dynamically constructs the share link based on where the HTML is currently hosted
+            const baseUrl = window.location.origin + window.location.pathname;
             const shareUrl = `${baseUrl}?script=${id}`;
             document.getElementById("modal-share-link").value = shareUrl;
             
-            const loadstringSnippet = `loadstring(game:HttpGet("https://raw.luanet.cc/script/${id}"))()`;
-            document.getElementById("modal-loadstring").value = loadstringSnippet;
+            document.getElementById("modal-loadstring").value = generateSmartLoader(id);
         }
 
         function closeScriptModal() {
