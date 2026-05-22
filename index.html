@@ -349,17 +349,19 @@
         }
 
         function openScriptModal(id, title, content) {
-            document.getElementById("script-modal").classList.remove("hidden");
-            document.getElementById("modal-script-title").textContent = title;
-            document.getElementById("modal-raw-code").textContent = content;
-            
-            // The Cloudflare Worker handles the routing now
-            const targetUrl = `${WORKER_URL}/${id}`;
-            document.getElementById("modal-share-link").value = targetUrl;
-            
-            const loadstringSnippet = `loadstring(game:HttpGet("${targetUrl}"))()`;
-            document.getElementById("modal-loadstring").value = loadstringSnippet;
-        }
+    document.getElementById("script-modal").classList.remove("hidden");
+    document.getElementById("modal-script-title").textContent = title;
+    document.getElementById("modal-raw-code").textContent = content;
+    
+    // Automatically generates the clean /api/id URL based on where it's hosted
+    const baseUrl = window.location.origin;
+    const cleanApiUrl = `${baseUrl}/api/${id}`;
+    
+    document.getElementById("modal-share-link").value = cleanApiUrl;
+    
+    const loadstringSnippet = `loadstring(game:HttpGet("${cleanApiUrl}"))()`;
+    document.getElementById("modal-loadstring").value = loadstringSnippet;
+}
 
         function closeScriptModal() {
             document.getElementById("script-modal").classList.add("hidden");
