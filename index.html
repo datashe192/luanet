@@ -14,7 +14,6 @@
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased selection:bg-blue-500/30">
 
-    <!-- AUTHENTICATION CONTAINER -->
     <div id="auth-container" class="flex min-h-screen items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
@@ -39,7 +38,6 @@
         </div>
     </div>
 
-    <!-- MAIN DASHBOARD SYSTEM -->
     <div id="dashboard-container" class="hidden flex min-h-screen">
         <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
             <div class="p-6 border-b border-gray-800">
@@ -94,10 +92,11 @@
         </main>
     </div>
 
-    <!-- SCRIPT INJECTION -->
     <script>
         const API_URL = "https://api.jsonbin.io/v3/b/6a0f135bee5a733b12f7d4ec"; 
-        const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq"; // Updated to your Access Key
+        
+        // YOUR NEW ACCESS KEY INJECTED HERE
+        const API_KEY = "$2a$10$ZIn.UyUVBI2mtaIHI8wvXO/l67hIde7k0kPRsz15kpWomcbRCIOYS"; 
 
         let isLoginMode = true;
         let currentUser = null;
