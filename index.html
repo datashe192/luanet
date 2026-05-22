@@ -14,52 +14,6 @@
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased selection:bg-blue-500/30">
 
-    <div id="loading-container" class="hidden flex min-h-screen items-center justify-center p-4 bg-gray-950">
-        <div class="flex flex-col items-center">
-            <div class="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-            <p class="text-gray-500 text-xs font-mono tracking-widest uppercase">Connecting to Luanet Core...</p>
-        </div>
-    </div>
-
-    <div id="not-found-container" class="hidden flex min-h-screen items-center justify-center p-4 bg-gray-950">
-        <div class="text-center">
-            <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-500/10 mb-6 border border-red-500/20">
-                <svg class="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-            </div>
-            <h1 class="text-3xl font-black tracking-tight mb-3 text-white uppercase">Payload Not Found</h1>
-            <p class="text-gray-500 text-sm max-w-sm mx-auto">This execution ID does not exist in the database or has been permanently wiped.</p>
-        </div>
-    </div>
-
-    <div id="public-view-container" class="hidden flex min-h-screen items-center justify-center p-4 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black">
-        <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 p-10 rounded-2xl w-full max-w-lg shadow-2xl relative overflow-hidden text-center">
-            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-rose-600"></div>
-            
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-500/10 mb-6 border border-red-500/20">
-                <svg class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                </svg>
-            </div>
-            
-            <h1 class="text-2xl font-black tracking-tight mb-2 text-white uppercase">Protected by Luanet</h1>
-            <p class="text-gray-400 text-sm mb-6">Direct API access blocked. Execute the loader below in your environment to inject the payload.</p>
-
-            <div class="text-left bg-gray-950 border border-gray-800 rounded-lg p-4 relative group">
-                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 flex justify-between">
-                    <span>Roblox Execution String</span>
-                    <button onclick="copyLoadstring('public-loadstring')" class="text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Copy to clipboard">Copy</button>
-                </label>
-                <textarea id="public-loadstring" readonly class="w-full bg-transparent text-emerald-400 font-mono text-[10px] resize-none outline-none custom-scrollbar h-32 selection:bg-emerald-500/30 whitespace-pre"></textarea>
-            </div>
-            
-            <div class="mt-8 text-xs text-gray-600 font-mono">
-                Luanet Core // End-to-End Encryption
-            </div>
-        </div>
-    </div>
-
     <div id="auth-container" class="flex min-h-screen items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
@@ -161,9 +115,9 @@
                             </div>
 
                             <div class="flex-1 flex flex-col">
-                                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Roblox Smart Loader</label>
+                                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Roblox Execution String</label>
                                 <textarea id="modal-loadstring" readonly class="flex-1 w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-[10px] font-mono text-emerald-400 resize-none focus:outline-none custom-scrollbar whitespace-pre"></textarea>
-                                <button onclick="copyLoadstring('modal-loadstring')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium border border-gray-700">Copy Loader</button>
+                                <button onclick="copyLoadstring('modal-loadstring')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium border border-gray-700">Copy Loadstring</button>
                             </div>
                         </div>
                     </div>
@@ -176,65 +130,13 @@
     <script>
         const API_URL = "https://api.jsonbin.io/v3/b/6a0f135bee5a733b12f7d4ec"; 
         const API_KEY = "$2a$10$ZIn.UyUVBI2mtaIHI8wvXO/l67hIde7k0kPRsz15kpWomcbRCIOYS"; 
+        
+        // 🛑 PASTE YOUR CLOUDFLARE WORKER URL HERE (No trailing slash)
+        const WORKER_URL = "https://raw-luanet.YOUR-USERNAME.workers.dev"; 
 
         let isLoginMode = true;
         let currentUser = null;
         let cachedDB = null;
-
-        // Smart Loader Generator
-        function generateSmartLoader(id) {
-            return `-- Luanet Premium Loader
-local req = (syn and syn.request) or request or http_request or (fluxus and fluxus.request)
-if req then
-    local res = req({
-        Url = "${API_URL}",
-        Method = "GET",
-        Headers = { ["X-Access-Key"] = "${API_KEY}", ["X-Bin-Meta"] = "false" }
-    })
-    if res.StatusCode == 200 then
-        local db = game:GetService("HttpService"):JSONDecode(res.Body)
-        local scripts = db.record and db.record.Scripts or db.Scripts
-        if scripts then
-            for _, s in ipairs(scripts) do
-                if s.id == "${id}" then
-                    loadstring(s.content)()
-                    return
-                end
-            end
-        end
-    end
-end
-warn("Luanet: Execution blocked. Payload not found or environment unsupported.")`;
-        }
-
-        // --- URL ROUTING LOGIC & VALIDATION ---
-        document.addEventListener("DOMContentLoaded", async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const scriptParam = urlParams.get('script');
-
-            if (scriptParam) {
-                document.getElementById("auth-container").classList.add("hidden");
-                document.getElementById("loading-container").classList.remove("hidden");
-                
-                try {
-                    const db = await fetchDatabase();
-                    document.getElementById("loading-container").classList.add("hidden");
-                    
-                    const existsInScripts = db.Scripts && db.Scripts.some(s => s.id === scriptParam);
-                    const existsInPages = db.Pages && db.Pages.includes(scriptParam);
-
-                    if (existsInScripts || existsInPages) {
-                        document.getElementById("public-view-container").classList.remove("hidden");
-                        document.getElementById("public-loadstring").value = generateSmartLoader(scriptParam);
-                    } else {
-                        document.getElementById("not-found-container").classList.remove("hidden");
-                    }
-                } catch (err) {
-                    document.getElementById("loading-container").classList.add("hidden");
-                    document.getElementById("not-found-container").classList.remove("hidden");
-                }
-            }
-        });
 
         // --- DATABASE LOGIC ---
         async function fetchDatabase(forceRefresh = false) {
@@ -451,12 +353,12 @@ warn("Luanet: Execution blocked. Payload not found or environment unsupported.")
             document.getElementById("modal-script-title").textContent = title;
             document.getElementById("modal-raw-code").textContent = content;
             
-            // Dynamically constructs the share link based on where the HTML is currently hosted
-            const baseUrl = window.location.origin + window.location.pathname;
-            const shareUrl = `${baseUrl}?script=${id}`;
-            document.getElementById("modal-share-link").value = shareUrl;
+            // The Cloudflare Worker handles the routing now
+            const targetUrl = `${WORKER_URL}/${id}`;
+            document.getElementById("modal-share-link").value = targetUrl;
             
-            document.getElementById("modal-loadstring").value = generateSmartLoader(id);
+            const loadstringSnippet = `loadstring(game:HttpGet("${targetUrl}"))()`;
+            document.getElementById("modal-loadstring").value = loadstringSnippet;
         }
 
         function closeScriptModal() {
