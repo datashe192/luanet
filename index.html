@@ -97,7 +97,7 @@
     <!-- SCRIPT INJECTION -->
     <script>
         const API_URL = "https://api.jsonbin.io/v3/b/6a0f135bee5a733b12f7d4ec"; 
-        const API_KEY = "$2a$10$tZk5dDEH4qfK/fM7K7gI3u4fR1bUaY6R.MtoQ/X0G9PjI.O5O/81G";
+        const API_KEY = "$2a$10$L/SsdAAbMpwYkkXDkCaNi.ZWw47F2uIvJqRYt195De.yEeNfZj6Nq"; // Updated to your Access Key
 
         let isLoginMode = true;
         let currentUser = null;
@@ -112,8 +112,8 @@
                 const res = await fetch(`${API_URL}?cb=${cb}`, {
                     method: "GET",
                     headers: { 
-                        "X-Master-Key": API_KEY,
-                        "X-Bin-Meta": "false", // Pass this as a header, not a URL param
+                        "X-Access-Key": API_KEY, // Changed to X-Access-Key
+                        "X-Bin-Meta": "false",
                         "Content-Type": "application/json"
                     }
                 });
@@ -125,7 +125,6 @@
 
                 let rawData = await res.json();
                 
-                // Fix: JSONBin V3 wraps data in 'record'. We need to extract it.
                 let data = rawData.record ? rawData.record : rawData;
                 
                 if (!data) data = {};
@@ -146,8 +145,8 @@
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-Master-Key": API_KEY,
-                        "X-Bin-Versioning": "false" // Prevents hitting version limits
+                        "X-Access-Key": API_KEY, // Changed to X-Access-Key
+                        "X-Bin-Versioning": "false"
                     },
                     body: JSON.stringify(payload)
                 });
@@ -218,7 +217,6 @@
                         db.Users.push({ username: user, password: pass });
                         await updateDatabase(db);
                         
-                        // Fix: Explicitly force the UI back to Login Mode after successful signup
                         setAuthMode(true);
                         
                         showToast("Account signed up successfully. Proceed to login.");
