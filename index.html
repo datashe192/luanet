@@ -14,6 +14,33 @@
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased selection:bg-blue-500/30">
 
+    <div id="public-view-container" class="hidden flex min-h-screen items-center justify-center p-4 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black">
+        <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 p-10 rounded-2xl w-full max-w-lg shadow-2xl relative overflow-hidden text-center">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-rose-600"></div>
+            
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-500/10 mb-6 border border-red-500/20">
+                <svg class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+            </div>
+            
+            <h1 class="text-2xl font-black tracking-tight mb-2 text-white uppercase">Protected by Luanet</h1>
+            <p class="text-gray-400 text-sm mb-8">Direct API access blocked. Execute the loader below in your environment to inject the payload.</p>
+
+            <div class="text-left bg-gray-950 border border-gray-800 rounded-lg p-4 relative group">
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Roblox Execution String</label>
+                <textarea id="public-loadstring" readonly class="w-full bg-transparent text-emerald-400 font-mono text-xs resize-none outline-none overflow-hidden h-16 selection:bg-emerald-500/30"></textarea>
+                <button onclick="copyLoadstring('public-loadstring')" class="absolute top-4 right-4 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded transition-colors cursor-pointer" title="Copy to clipboard">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
+            </div>
+            
+            <div class="mt-8 text-xs text-gray-600 font-mono">
+                Luanet Core // End-to-End Encryption
+            </div>
+        </div>
+    </div>
+
     <div id="auth-container" class="flex min-h-screen items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
@@ -38,7 +65,7 @@
         </div>
     </div>
 
-    <div id="dashboard-container" class="hidden flex min-h-screen">
+    <div id="dashboard-container" class="hidden flex min-h-screen relative">
         <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
             <div class="p-6 border-b border-gray-800">
                 <div class="flex items-center space-x-2">
@@ -66,9 +93,9 @@
                 </div>
             </header>
 
-            <div class="flex-1 p-8 overflow-y-auto custom-scrollbar">
+            <div class="flex-1 p-8 overflow-y-auto custom-scrollbar relative">
                 <div id="tab-lua-scripts" class="block">
-                    <div id="scripts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    <div id="scripts-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
                     <div id="empty-state" class="hidden text-center py-12 border border-dashed border-gray-800 rounded-xl">
                         <p class="text-gray-500 text-sm">No scripts compiled yet. Click 'Create Lua Script' to begin deployment.</p>
                     </div>
@@ -89,20 +116,71 @@
                     </div>
                 </div>
             </div>
+            
+            <div id="script-modal" class="hidden absolute inset-0 bg-gray-950/90 backdrop-blur-sm z-50 flex items-center justify-center p-8">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+                    <div class="flex justify-between items-center p-5 border-b border-gray-800 bg-gray-900/50">
+                        <h3 id="modal-script-title" class="text-lg font-bold text-white">Script Title</h3>
+                        <button onclick="closeScriptModal()" class="text-gray-500 hover:text-white transition-colors cursor-pointer">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="flex-1 flex overflow-hidden">
+                        <div class="flex-1 p-4 overflow-y-auto custom-scrollbar border-r border-gray-800 bg-gray-950">
+                            <pre><code id="modal-raw-code" class="text-sm font-mono text-gray-300 whitespace-pre-wrap break-all"></code></pre>
+                        </div>
+                        
+                        <div class="w-80 p-5 bg-gray-900 flex flex-col space-y-6">
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Public Share Link</label>
+                                <div class="flex">
+                                    <input type="text" id="modal-share-link" readonly class="flex-1 bg-gray-950 border border-gray-800 rounded-l-lg px-3 py-2 text-xs text-gray-400 focus:outline-none">
+                                    <button onclick="copyLoadstring('modal-share-link')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded-r-lg transition-colors cursor-pointer text-xs font-medium">Copy</button>
+                                </div>
+                                <p class="text-[10px] text-gray-500 mt-1">Send this link to users. They will see the Lock Screen.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Roblox Loadstring</label>
+                                <textarea id="modal-loadstring" readonly class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-xs font-mono text-emerald-400 resize-none h-20 focus:outline-none"></textarea>
+                                <button onclick="copyLoadstring('modal-loadstring')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium border border-gray-700">Copy Loadstring</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
         </main>
     </div>
 
     <script>
         const API_URL = "https://api.jsonbin.io/v3/b/6a0f135bee5a733b12f7d4ec"; 
-        
-        // YOUR NEW ACCESS KEY INJECTED HERE
         const API_KEY = "$2a$10$ZIn.UyUVBI2mtaIHI8wvXO/l67hIde7k0kPRsz15kpWomcbRCIOYS"; 
 
         let isLoginMode = true;
         let currentUser = null;
         let cachedDB = null;
 
-        // DIAGNOSTIC FETCH
+        // --- URL ROUTING LOGIC ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const scriptParam = urlParams.get('script');
+
+            if (scriptParam) {
+                // If there is a ?script= ID in the URL, block auth and show public page
+                document.getElementById("auth-container").classList.add("hidden");
+                document.getElementById("dashboard-container").classList.add("hidden");
+                document.getElementById("public-view-container").classList.remove("hidden");
+                
+                // Generate the loadstring. Note: We use a generic raw URL placeholder since static HTML can't serve raw.
+                // In the future, you would replace 'yourdomain.com/raw' with your actual raw text host.
+                const loadstringSnippet = `loadstring(game:HttpGet("https://raw.luanet.cc/script/${scriptParam}"))()`;
+                document.getElementById("public-loadstring").value = loadstringSnippet;
+            }
+        });
+
+        // --- DATABASE LOGIC ---
         async function fetchDatabase(forceRefresh = false) {
             if (cachedDB && !forceRefresh) return cachedDB;
             const cb = new Date().getTime(); 
@@ -111,19 +189,14 @@
                 const res = await fetch(`${API_URL}?cb=${cb}`, {
                     method: "GET",
                     headers: { 
-                        "X-Access-Key": API_KEY, // Changed to X-Access-Key
+                        "X-Access-Key": API_KEY,
                         "X-Bin-Meta": "false",
                         "Content-Type": "application/json"
                     }
                 });
                 
-                if (!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(`JSONBin GET Error ${res.status}: ${errText}`);
-                }
-
+                if (!res.ok) throw new Error(`JSONBin GET Error ${res.status}`);
                 let rawData = await res.json();
-                
                 let data = rawData.record ? rawData.record : rawData;
                 
                 if (!data) data = {};
@@ -137,29 +210,25 @@
             }
         }
 
-        // DIAGNOSTIC UPDATE
         async function updateDatabase(payload) {
             try {
                 const res = await fetch(API_URL, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-Access-Key": API_KEY, // Changed to X-Access-Key
+                        "X-Access-Key": API_KEY,
                         "X-Bin-Versioning": "false"
                     },
                     body: JSON.stringify(payload)
                 });
-                
-                if (!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(`JSONBin PUT Error ${res.status}: ${errText}`);
-                }
+                if (!res.ok) throw new Error(`JSONBin PUT Error ${res.status}`);
                 cachedDB = payload; 
             } catch (err) {
                 throw new Error(`Update Error: ${err.message}`);
             }
         }
 
+        // --- UI & AUTH LOGIC ---
         function setAuthMode(mode) {
             isLoginMode = mode;
             document.getElementById("auth-primary-btn").textContent = isLoginMode ? "Log In" : "Sign Up";
@@ -167,9 +236,7 @@
             document.getElementById("auth-toggle").textContent = isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Log In";
         }
 
-        function toggleAuthMode() {
-            setAuthMode(!isLoginMode);
-        }
+        function toggleAuthMode() { setAuthMode(!isLoginMode); }
 
         function showToast(message, isError = false) {
             const existing = document.getElementById("toast");
@@ -184,7 +251,7 @@
             setTimeout(() => {
                 toast.classList.add("translate-y-10", "opacity-0");
                 setTimeout(() => toast.remove(), 300);
-            }, 7000); 
+            }, 5000); 
         }
 
         async function handleAuth() {
@@ -197,7 +264,6 @@
             try {
                 btn.disabled = true;
                 btn.textContent = "Authenticating...";
-                
                 const db = await fetchDatabase(true); 
 
                 if (isLoginMode) {
@@ -215,15 +281,12 @@
                     } else {
                         db.Users.push({ username: user, password: pass });
                         await updateDatabase(db);
-                        
                         setAuthMode(true);
-                        
                         showToast("Account signed up successfully. Proceed to login.");
                     }
                 }
             } catch (err) {
                 showToast(`Crash: ${err.message}`, true);
-                console.error("FULL CRASH LOG:", err);
             } finally {
                 btn.disabled = false;
                 btn.textContent = isLoginMode ? "Log In" : "Sign Up";
@@ -253,6 +316,7 @@
             }
         }
 
+        // --- EDITOR & MODAL LOGIC ---
         function openScriptEditor() {
             document.getElementById("script-title").value = "";
             document.getElementById("script-body").value = "";
@@ -281,7 +345,6 @@
             try {
                 btn.disabled = true;
                 btn.textContent = "Publishing...";
-                
                 const db = await fetchDatabase(true);
                 const randomId = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
                 
@@ -294,19 +357,18 @@
                 });
 
                 await updateDatabase(db);
-
                 showToast("Script pushed successfully.");
                 switchTab('lua-scripts');
             } catch (err) {
                 showToast(`Publish Blocked: ${err.message}`, true);
-                console.error(err);
             } finally {
                 btn.disabled = false;
                 btn.textContent = "Save & Publish";
             }
         }
 
-        async function deleteScript(id) {
+        async function deleteScript(event, id) {
+            event.stopPropagation(); // Prevents opening the modal when clicking delete
             if(!confirm("Are you sure you want to completely drop this script from the database?")) return;
             
             try {
@@ -318,6 +380,32 @@
             } catch(err) {
                 showToast(`Delete Failed: ${err.message}`, true);
             }
+        }
+
+        // View Script Modal
+        function openScriptModal(id, title, content) {
+            document.getElementById("script-modal").classList.remove("hidden");
+            document.getElementById("modal-script-title").textContent = title;
+            document.getElementById("modal-raw-code").textContent = content;
+            
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = `${baseUrl}?script=${id}`;
+            document.getElementById("modal-share-link").value = shareUrl;
+            
+            const loadstringSnippet = `loadstring(game:HttpGet("https://raw.luanet.cc/script/${id}"))()`;
+            document.getElementById("modal-loadstring").value = loadstringSnippet;
+        }
+
+        function closeScriptModal() {
+            document.getElementById("script-modal").classList.add("hidden");
+        }
+
+        function copyLoadstring(elementId) {
+            const copyText = document.getElementById(elementId);
+            copyText.select();
+            copyText.setSelectionRange(0, 99999); 
+            navigator.clipboard.writeText(copyText.value);
+            showToast("Copied to clipboard!");
         }
 
         async function renderScripts() {
@@ -336,11 +424,18 @@
                     myScripts.forEach(script => {
                         const date = new Date(script.createdAt).toLocaleDateString();
                         const card = document.createElement("div");
-                        card.className = "bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors flex flex-col h-40 group";
+                        
+                        // Modified card to be fully clickable
+                        card.className = "bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-blue-500/50 hover:bg-gray-800/50 transition-all flex flex-col h-40 group cursor-pointer relative";
+                        
+                        // Properly escape the content to pass into the onclick handler
+                        const escapedContent = script.content ? script.content.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n") : "";
+                        card.setAttribute("onclick", `openScriptModal('${script.id}', '${script.title.replace(/'/g, "\\'")}', '${escapedContent}')`);
+                        
                         card.innerHTML = `
                             <div class="flex justify-between items-start mb-2">
-                                <h3 class="font-semibold text-gray-200 truncate pr-2">${script.title}</h3>
-                                <button onclick="deleteScript('${script.id}')" class="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                                <h3 class="font-semibold text-gray-200 truncate pr-2 group-hover:text-blue-400 transition-colors">${script.title}</h3>
+                                <button onclick="deleteScript(event, '${script.id}')" class="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all z-10 p-1">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
                             </div>
@@ -361,7 +456,6 @@
 
         function logout() {
             currentUser = null;
-            cachedDB = null;
             document.getElementById("auth-user").value = "";
             document.getElementById("auth-pass").value = "";
             document.getElementById("dashboard-container").classList.add("hidden");
