@@ -192,24 +192,25 @@
                 document.getElementById("loading-container").classList.remove("hidden");
                 
                 try {
-                    // Fetch the database to verify the script actually exists
+                    // Fetch the database to verify the script exists
                     const db = await fetchDatabase();
                     document.getElementById("loading-container").classList.add("hidden");
                     
-                    // Check if there is ANY script in the DB that matches this ID
-                    const validScript = db.Scripts.find(s => s.id === scriptParam);
+                    // Verify logic: Check if it's in the Scripts array OR the explicit Pages array
+                    const existsInScripts = db.Scripts && db.Scripts.some(s => s.id === scriptParam);
+                    const existsInPages = db.Pages && db.Pages.includes(scriptParam);
 
-                    if (validScript) {
-                        // Success! The ID is real. Show the Luanet lock screen.
+                    if (existsInScripts || existsInPages) {
+                        // Success! The ID is verified. Show the Luanet lock screen.
                         document.getElementById("public-view-container").classList.remove("hidden");
                         const loadstringSnippet = `loadstring(game:HttpGet("https://raw.luanet.cc/script/${scriptParam}"))()`;
                         document.getElementById("public-loadstring").value = loadstringSnippet;
                     } else {
-                        // Fail! The ID is fake or was deleted. Show the 404 page.
+                        // Fail! The ID is fake or deleted. Show the 404 page.
                         document.getElementById("not-found-container").classList.remove("hidden");
                     }
                 } catch (err) {
-                    // If JSONBin completely fails to load, fail safely to the 404 page
+                    // Fail safely to the 404 page if database is completely unreachable
                     document.getElementById("loading-container").classList.add("hidden");
                     document.getElementById("not-found-container").classList.remove("hidden");
                 }
@@ -235,9 +236,12 @@
                 let rawData = await res.json();
                 let data = rawData.record ? rawData.record : rawData;
                 
+                // Initialize core tables ensuring `Pages` exists
                 if (!data) data = {};
                 if (!data.Users) data.Users = [];
                 if (!data.Scripts) data.Scripts = [];
+                if (!data.Pages) data.Pages = []; 
+                
                 cachedDB = data;
                 return data;
 
@@ -391,6 +395,10 @@
                     author: currentUser,
                     createdAt: new Date().toISOString()
                 });
+                
+                // Add the ID to the Pages array directly to guarantee validation
+                if (!db.Pages) db.Pages = [];
+                db.Pages.push(randomId);
 
                 await updateDatabase(db);
                 showToast("Script pushed successfully.");
@@ -409,7 +417,13 @@
             
             try {
                 const db = await fetchDatabase(true);
+                
+                // Filter out the deleted ID from both arrays
                 db.Scripts = db.Scripts.filter(s => s.id !== id);
+                if (db.Pages) {
+                    db.Pages = db.Pages.filter(p => p !== id);
+                }
+                
                 await updateDatabase(db);
                 showToast("Payload wiped.");
                 renderScripts();
