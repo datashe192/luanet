@@ -14,6 +14,25 @@
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased selection:bg-blue-500/30">
 
+    <div id="loading-container" class="hidden flex min-h-screen items-center justify-center p-4 bg-gray-950">
+        <div class="flex flex-col items-center">
+            <div class="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+            <p class="text-gray-500 text-xs font-mono tracking-widest uppercase">Connecting to Luanet Core...</p>
+        </div>
+    </div>
+
+    <div id="not-found-container" class="hidden flex min-h-screen items-center justify-center p-4 bg-gray-950">
+        <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-500/10 mb-6 border border-red-500/20">
+                <svg class="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-black tracking-tight mb-3 text-white uppercase">Payload Not Found</h1>
+            <p class="text-gray-500 text-sm max-w-sm mx-auto">This execution ID does not exist in the database or has been permanently wiped.</p>
+        </div>
+    </div>
+
     <div id="public-view-container" class="hidden flex min-h-screen items-center justify-center p-4 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black">
         <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 p-10 rounded-2xl w-full max-w-lg shadow-2xl relative overflow-hidden text-center">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-rose-600"></div>
@@ -162,21 +181,38 @@
         let currentUser = null;
         let cachedDB = null;
 
-        // --- URL ROUTING LOGIC ---
-        document.addEventListener("DOMContentLoaded", () => {
+        // --- URL ROUTING LOGIC & VALIDATION ---
+        document.addEventListener("DOMContentLoaded", async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const scriptParam = urlParams.get('script');
 
             if (scriptParam) {
-                // If there is a ?script= ID in the URL, block auth and show public page
+                // Instantly hide auth page and show the loading spinner
                 document.getElementById("auth-container").classList.add("hidden");
-                document.getElementById("dashboard-container").classList.add("hidden");
-                document.getElementById("public-view-container").classList.remove("hidden");
+                document.getElementById("loading-container").classList.remove("hidden");
                 
-                // Generate the loadstring. Note: We use a generic raw URL placeholder since static HTML can't serve raw.
-                // In the future, you would replace 'yourdomain.com/raw' with your actual raw text host.
-                const loadstringSnippet = `loadstring(game:HttpGet("https://raw.luanet.cc/script/${scriptParam}"))()`;
-                document.getElementById("public-loadstring").value = loadstringSnippet;
+                try {
+                    // Fetch the database to verify the script actually exists
+                    const db = await fetchDatabase();
+                    document.getElementById("loading-container").classList.add("hidden");
+                    
+                    // Check if there is ANY script in the DB that matches this ID
+                    const validScript = db.Scripts.find(s => s.id === scriptParam);
+
+                    if (validScript) {
+                        // Success! The ID is real. Show the Luanet lock screen.
+                        document.getElementById("public-view-container").classList.remove("hidden");
+                        const loadstringSnippet = `loadstring(game:HttpGet("https://raw.luanet.cc/script/${scriptParam}"))()`;
+                        document.getElementById("public-loadstring").value = loadstringSnippet;
+                    } else {
+                        // Fail! The ID is fake or was deleted. Show the 404 page.
+                        document.getElementById("not-found-container").classList.remove("hidden");
+                    }
+                } catch (err) {
+                    // If JSONBin completely fails to load, fail safely to the 404 page
+                    document.getElementById("loading-container").classList.add("hidden");
+                    document.getElementById("not-found-container").classList.remove("hidden");
+                }
             }
         });
 
@@ -368,7 +404,7 @@
         }
 
         async function deleteScript(event, id) {
-            event.stopPropagation(); // Prevents opening the modal when clicking delete
+            event.stopPropagation(); 
             if(!confirm("Are you sure you want to completely drop this script from the database?")) return;
             
             try {
@@ -425,10 +461,8 @@
                         const date = new Date(script.createdAt).toLocaleDateString();
                         const card = document.createElement("div");
                         
-                        // Modified card to be fully clickable
                         card.className = "bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-blue-500/50 hover:bg-gray-800/50 transition-all flex flex-col h-40 group cursor-pointer relative";
                         
-                        // Properly escape the content to pass into the onclick handler
                         const escapedContent = script.content ? script.content.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n") : "";
                         card.setAttribute("onclick", `openScriptModal('${script.id}', '${script.title.replace(/'/g, "\\'")}', '${escapedContent}')`);
                         
